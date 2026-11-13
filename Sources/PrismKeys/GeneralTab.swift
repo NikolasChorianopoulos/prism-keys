@@ -40,7 +40,7 @@ struct GeneralTab: View {
                         PermissionRow(granted: perms.im, title: "Input Monitoring", detail: "Only for the one-time M1–M5 key setup") {
                             HIDKeyListener.requestPermission(); Permissions.open("Privacy_ListenEvent")
                         }
-                        Text("Basic lighting needs no permissions. After granting Full Disk Access, quit and reopen Prism Keys.")
+                        Text("Basic lighting needs no permissions. When macOS offers to “Quit & Reopen” after you grant something, you can pick Later: Prism Keys notices new permissions on its own (Input Monitoring is the exception and needs a reopen).")
                             .font(.caption).foregroundStyle(.secondary)
                     }.padding(6)
                 }

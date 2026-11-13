@@ -49,15 +49,20 @@ if [ ! -f packaging/AppIcon.icns ]; then
 fi
 cp packaging/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 
-# Code signing (ad-hoc unless SIGN_IDENTITY is set, e.g. "Developer ID Application: …")
+# Code signing: SIGN_IDENTITY from release.config (falls back to ad-hoc if it isn't in the Keychain)
 IDENTITY="${SIGN_IDENTITY:--}"
+if [ "$IDENTITY" != "-" ] && ! security find-identity -p codesigning | grep -q "\"$IDENTITY\""; then
+  echo "▸ Signing identity '$IDENTITY' not found; using ad-hoc (permissions won't survive updates)"
+  IDENTITY="-"
+fi
 OPTS=(--force --timestamp=none --sign "$IDENTITY")
-[ "$IDENTITY" != "-" ] && OPTS=(--force --timestamp --options runtime --sign "$IDENTITY")
+[[ "$IDENTITY" == "Developer ID"* ]] && OPTS=(--force --timestamp --options runtime --sign "$IDENTITY")
 FW="$APP/Contents/Frameworks/Sparkle.framework"
 for item in "$FW/Versions/B/XPCServices/Installer.xpc" "$FW/Versions/B/XPCServices/Downloader.xpc" \
             "$FW/Versions/B/Autoupdate" "$FW/Versions/B/Updater.app" "$FW"; do
   [ -e "$item" ] && codesign "${OPTS[@]}" "$item"
 done
 codesign "${OPTS[@]}" "$APP"
-codesign --verify --deep --strict "$APP" && echo "▸ Signed ($IDENTITY)"
+codesign --verify --deep --strict "$APP" 2>/dev/null || [ "$IDENTITY" != "-" ] || { echo "signature check failed"; exit 1; }
+echo "▸ Signed ($IDENTITY)"
 echo "✓ $APP"

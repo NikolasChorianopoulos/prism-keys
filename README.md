@@ -55,6 +55,8 @@ scripts/make-dmg.sh       # → dist/PrismKeys-<version>.dmg
 
 One-time setup:
 
+0. Signing: builds are signed with the identity in `release.config` (`SIGN_IDENTITY`). A self-signed certificate is fine. Sign every release with the same one so macOS keeps users' permissions after updates, and back it up from Keychain Access.
+
 1. Create the GitHub repo and set `GITHUB_REPO` in `release.config`.
 2. Run `scripts/setup-updates.sh`. It creates the update-signing key: the private key goes in your Keychain and the public key in `release.config`. Back up the private key as the script explains. Without it you can't ship updates to existing installs.
 3. Build and publish a first release, e.g. `scripts/release.sh 1.0.0`. Copies installed from it will receive updates.
