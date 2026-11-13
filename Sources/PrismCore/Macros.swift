@@ -12,7 +12,8 @@ public final class MacroRunner {
 
     public func run(_ m: Macro, name: String) {
         queue.async { [self] in
-            log("macro \(name): \(m.actions.map(\.description).joined(separator: " "))")
+            // Only the key and step count: macro steps can contain private text (e.g. passwords).
+            log("macro \(name): \(m.actions.count) step(s)")
             for a in m.actions {
                 switch a.type {
                 case .text: typeText(a.value)

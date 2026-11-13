@@ -1,51 +1,88 @@
 # Prism Keys
 
-A menu bar app that brings lighting, key remapping, macros and notification alerts back to the **Razer BlackWidow Chroma** on modern macOS (Apple Silicon and Intel). It's for anyone whose keyboard is no longer supported by Razer Synapse.
+A menu bar app that brings lighting, macros, key remapping and notification alerts back to the **Razer BlackWidow Chroma** on modern macOS. It's for anyone whose keyboard is no longer supported by Razer Synapse.
 
 > Prism Keys is an independent project. It is not affiliated with or endorsed by Razer Inc. Razer, BlackWidow and Chroma are trademarks of Razer Inc.
 
+**Tested on:** BlackWidow Chroma (`1532:0203`, US layout) with macOS 27 on Apple Silicon. The DMG also runs on Intel Macs, and the Tournament Edition and Overwatch variants should work, but none of those have been tested yet. Reports are welcome.
+
 ## Features
 
-- **Menu bar dropdown:** on/off, profile, brightness, effects, color, speed, alert toggles.
-- **Effects that run on the keyboard itself:** Static, Breathing, Spectrum, Wave, Reactive.
-- **Effects animated by the app:** Rainbow, Ripple, Starlight, Heatmap, Gradient.
-- **Per-key colors:** click keys on an on-screen keyboard to paint them.
-- **Remapping:** remap any key on the Razer keyboard only. Your Mac's built-in keyboard isn't affected.
-- **Macros:** type text, press shortcuts, wait, open apps or URLs, run shell commands. Attach them to any key, including M1–M5.
-- **M1–M5 keys:** turn on "Enable M1–M5 keys". The keyboard switches to driver mode, and Prism Keys handles the Fn shortcuts itself: F1–F3 volume, F5–F7 media, F9 on-the-fly macro recording, F10 Gaming mode (Win/⌘ key off, with its indicator light), F11/F12 brightness, Pause sleep. Quitting the app hands them back to the keyboard.
-- **Notification and call alerts:** a sweep across the F-keys for notifications, and a pulse over the whole keyboard for incoming calls (FaceTime/iPhone, or any app whose notification says "incoming call"). A reminder can stay lit until you press a key.
-- **Profiles:** export them and import them on another Mac.
-- **Automatic updates** via Sparkle.
-- **Other:** lights turn off when the display sleeps, and settings are reapplied after unplugging or waking.
+**Lighting**
+- Effects the keyboard runs itself: Static, Breathing, Spectrum, Wave, Reactive.
+- Effects animated by the app: Rainbow, Ripple, Starlight, Heatmap, Gradient.
+- Per-key colors: click keys on an on-screen keyboard to paint them.
+- Brightness, profiles, and lights that turn off while the display sleeps.
 
-Supported: BlackWidow Chroma (`1532:0203`), plus the Tournament Edition and Overwatch variants (untested).
+**Keys and macros**
+- **Macros:** type text, press shortcuts, wait, open apps or URLs, run shell commands. Attach them to M1–M5 or any other key.
+- **On-the-fly recording:** press Fn+F9, type, press Fn+F9 again, then press the key that should play it back.
+- **Remapping** for the Razer only. Your Mac's own keyboard isn't affected.
+- **Fn shortcuts** as printed on the keys: volume, media, keyboard brightness, Gaming mode (Win/⌘ key off), sleep. The Gaming mode and macro indicator lights work too.
+- **Windows-style keys:** Num Lock switches the numpad between numbers and arrows, Caps Lock is shared with your Mac's keyboard, and Home/End/Page Up/Page Down move the cursor in text fields.
+
+**Alerts**
+- A light sweep across the F-keys for notifications, and a pulse over the whole keyboard for incoming calls (FaceTime/iPhone, or any app whose notification says "incoming call").
+- A reminder can stay lit until you press a key. A call alert stops when the call banner goes away.
+- A warning appears if an alert color is the same as your lighting color.
+
+**Also**
+- Export profiles and import them on another Mac.
+- Automatic updates.
+- Settings are reapplied after unplugging, waking or restarting.
 
 ## Install
 
 1. Download `PrismKeys-x.y.z.dmg` from [Releases](../../releases), open it, and drag **Prism Keys** into **Applications**.
-2. On first launch, **right-click the app → Open**, then confirm. This build isn't notarized by Apple, so macOS asks once.
-3. Optional permissions, in **System Settings → Privacy & Security**:
+2. Open Prism Keys. Because the app isn't notarized by Apple, macOS blocks it the first time:
+   - **macOS 15 or later:** click **Done**, then go to **System Settings → Privacy & Security**, scroll down and click **Open Anyway** next to Prism Keys, and confirm.
+   - **macOS 14:** right-click the app → **Open**, then confirm.
+3. Prism Keys appears in the menu bar, and Settings opens on first launch.
+
+### Permissions
+
+All of these are optional and are granted in **System Settings → Privacy & Security**. Basic lighting needs none of them.
 
 | Permission | Needed for |
 |---|---|
-| Accessibility | Macros, notification and call alerts (read from on-screen banners), typing effects |
-| Input Monitoring | M1–M5 keys, and the Fn shortcuts while they're enabled |
+| Accessibility | Macros, notification and call alerts (read from on-screen banners), typing effects, the Windows-style keys |
+| Input Monitoring | M1–M5 and the Fn shortcuts, and the Num/Caps Lock lights |
 | Full Disk Access | Optional: a second way to catch notifications |
 
-Basic lighting needs no permissions.
+Settings → General shows which permissions are granted and has buttons to grant the rest.
 
-### Troubleshooting
+### M1–M5 and the Fn shortcuts
+
+Turn on **M1–M5 macro keys** in the menu (or in Settings → Keys & Macros). The keyboard then switches to "driver mode": it sends M1–M5 and Fn to Prism Keys, and Prism Keys handles these Fn shortcuts itself:
+
+| Fn + | Does |
+|---|---|
+| F1 / F2 / F3 | Mute / volume down / volume up |
+| F5 / F6 / F7 | Previous / play-pause / next |
+| F9 | Record a macro |
+| F10 | Gaming mode (Win/⌘ key off) |
+| F11 / F12 | Keyboard brightness down / up |
+| Pause | Sleep |
+
+Quitting Prism Keys switches the keyboard back to normal mode, and the keyboard handles Fn itself again.
+
+## Troubleshooting
 
 - **The keyboard flickers on bright colors, especially white.** It isn't getting enough power, which is common behind USB hubs. Plug it straight into the Mac, use a powered hub, or lower Settings → General → Maximum brightness.
 - **A permission is on in System Settings but Prism Keys says it's missing.** That entry belongs to an older build. Run `tccutil reset All app.prismkeys.PrismKeys`, reopen Prism Keys and grant again.
+- **The Fn keys or remaps behave oddly after Prism Keys crashed.** A crash can leave the keyboard in driver mode with Prism Keys' key changes still active. Reopen Prism Keys, or unplug the keyboard and plug it back in.
+- **Scroll Lock / Pause change the screen brightness.** That's macOS: it treats those keys as F14/F15. Remap them in Keys & Macros if you prefer.
+- **A key only works sometimes.** On older keyboards, worn switches can register only some presses. Compressed air or switch contact cleaner often helps.
+- **Something else.** Settings → General → Open log shows what Prism Keys is doing. The log never contains your notifications' text or your macros' contents.
 
-### Using it from Shortcuts or scripts
+## Using it from Shortcuts or scripts
 
 ```bash
 open prismkeys://alert/notify     # or alert/call, alert/clear
 open prismkeys://effect/wave      # any effect name
 open prismkeys://profile/Gaming   # switch profile
-open prismkeys://lights/off       # lights/on
+open prismkeys://lights/off       # or lights/on
+open prismkeys://gamemode/on      # or gamemode/off (with M1–M5 enabled)
 ```
 
 ## Build from source
@@ -57,15 +94,16 @@ scripts/build-app.sh      # → dist/Prism Keys.app
 scripts/make-dmg.sh       # → dist/PrismKeys-<version>.dmg
 ```
 
+Builds are signed with the identity named in `release.config` (`SIGN_IDENTITY`). If that certificate isn't in your Keychain, the build falls back to ad-hoc signing. The app still runs, but macOS forgets its permissions after every rebuild.
+
 ## Publishing updates
 
 One-time setup:
 
-0. Signing: builds are signed with the identity in `release.config` (`SIGN_IDENTITY`). A self-signed certificate is fine. Sign every release with the same one so macOS keeps users' permissions after updates, and back it up from Keychain Access.
-
-1. Create the GitHub repo and set `GITHUB_REPO` in `release.config`.
-2. Run `scripts/setup-updates.sh`. It creates the update-signing key: the private key goes in your Keychain and the public key in `release.config`. Back up the private key as the script explains. Without it you can't ship updates to existing installs.
-3. Build and publish a first release, e.g. `scripts/release.sh 1.0.0`. Copies installed from it will receive updates.
+1. **Signing certificate.** Create a self-signed code-signing certificate (any name, set as `SIGN_IDENTITY` in `release.config`) and **back it up** (Keychain Access → My Certificates → Export). Every release must be signed with the same one, or users lose their permissions after updating.
+2. Create the GitHub repo and set `GITHUB_REPO` in `release.config`.
+3. Run `scripts/setup-updates.sh`. It creates the update-signing key: the private key goes in your Keychain and the public key in `release.config`. **Back up the private key** as the script explains. Without it you can't ship updates to existing installs.
+4. Publish a first release, e.g. `scripts/release.sh 1.0.0`. Copies installed from it receive later updates.
 
 For each new version:
 
@@ -77,4 +115,11 @@ This bumps `VERSION`, builds a universal DMG, signs it for Sparkle, writes `appc
 
 ## How it works
 
-Lighting commands are sent to the keyboard as USB HID feature reports, using the protocol documented by the open-source [OpenRazer](https://openrazer.github.io) project. Remaps use macOS's built-in `hidutil`, limited to this one keyboard. Macros fire through a keyboard event tap.
+- **Lighting:** commands are sent as USB HID feature reports, following the protocol documented by the open-source [OpenRazer](https://openrazer.github.io) project.
+- **Remaps and Num Lock:** macOS's built-in `hidutil`, limited to this one keyboard.
+- **Macros, alerts and the Windows-style keys:** a keyboard event tap and the Accessibility API. Each key event says which keyboard sent it, so changes apply to the Razer only.
+- **M1–M5 and Fn:** in driver mode they arrive as a vendor-specific HID report, which Prism Keys reads directly.
+
+## License
+
+[MIT](LICENSE)
