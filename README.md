@@ -71,7 +71,7 @@ If you plug in a Razer keyboard that isn't supported, Prism Keys says so and off
 2. Open Prism Keys. It appears in the menu bar, and Settings opens the first time.
 
 > [!IMPORTANT]
-> Prism Keys isn't notarized by Apple (that needs a paid developer account), so the first time you open it macOS says it *"could not verify Prism Keys is free of malware"*. Allow it once:
+> Prism Keys isn't notarized by Apple (that needs a paid developer account), so the first time you open it macOS shows the warning below. It appears for **every** app that isn't notarized, not because anything harmful was found, and the full source code is in this repository. Allow it once:
 >
 > - **Recommended, Terminal:** run this, then open Prism Keys normally:
 >   ```bash
@@ -80,6 +80,11 @@ If you plug in a Razer keyboard that isn't supported, Prism Keys says so and off
 > - **Alternative, System Settings:** after the warning, click **Done**, then go straight to **System Settings → Privacy & Security** and look at the very bottom for **Open Anyway**. It only appears for a short while after a blocked launch, and some macOS versions don't offer it at all. (On macOS 14 you can also right-click the app → **Open**.)
 >
 > Make sure to **replace** any older copy: if Finder asks, choose **Replace**, not **Keep Both**.
+
+<p align="center">
+  <img src="docs/images/gatekeeper-warning.png" width="270" alt="macOS warning: “Prism Keys.app” Not Opened. Apple could not verify “Prism Keys.app” is free of malware…">
+  <br><sub>The first-launch warning. Click <b>Done</b> (not Move to Trash), then use one of the options above.</sub>
+</p>
 
 After that, Prism Keys updates itself: it checks for new versions daily and offers to install them (or use **Check for Updates…** in the menu).
 
@@ -124,6 +129,7 @@ Quitting Prism Keys switches the keyboard back to normal mode, and the keyboard 
 - **The Fn keys or remaps behave oddly after Prism Keys crashed.** A crash can leave the keyboard in driver mode with Prism Keys' key changes still active. Reopen Prism Keys, or unplug the keyboard and plug it back in.
 - **Scroll Lock / Pause change the screen brightness.** That's macOS: it treats those keys as F14/F15. Remap them in Keys & Macros if you prefer.
 - **A key only works sometimes.** On older keyboards, worn switches can register only some presses. Compressed air or switch contact cleaner often helps.
+- **Reinstalling or uninstalling.** To update, just replace the app; your settings stay. Cleaner apps (AppCleaner, CleanMyMac…) delete Prism Keys' settings along with the app, so export your profiles first (Settings → Profiles → Export all…). Settings live in `~/Library/Application Support/Prism Keys`.
 - **Something else.** Settings → General → Open log shows what Prism Keys is doing. The log never contains your notifications' text or your macros' contents.
 
 ## Using it from Shortcuts or scripts
