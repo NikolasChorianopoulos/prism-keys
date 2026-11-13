@@ -31,10 +31,10 @@ struct GeneralTab: View {
 
                 GroupBox("Permissions") {
                     VStack(alignment: .leading, spacing: 8) {
-                        PermissionRow(granted: perms.ax, title: "Accessibility", detail: "Macros, typing effects (Ripple, Heatmap), stopping alerts with a key press") {
+                        PermissionRow(granted: perms.ax, title: "Accessibility", detail: "Macros, notification & call alerts, typing effects (Ripple, Heatmap)") {
                             Permissions.requestAccessibility()
                         }
-                        PermissionRow(granted: perms.fda, title: "Full Disk Access", detail: "Notification and incoming call alerts (reads macOS's notification list)") {
+                        PermissionRow(granted: perms.fda, title: "Full Disk Access", detail: "Optional: a second way to catch notifications (reads macOS's notification list)") {
                             Permissions.open("Privacy_AllFiles")
                         }
                         PermissionRow(granted: perms.im, title: "Input Monitoring", detail: "M1–M5 macro keys (and the Fn shortcuts while they're enabled)") {

@@ -102,6 +102,12 @@ public final class Animator {
         alert = ActiveAlert(kind: kind, style: style, keys: keys, start: Date())
     }
 
+    /// Ends a running alert of this kind (e.g. the call banner went away).
+    public func endAlert(_ kind: AlertKind) {
+        lock.lock(); defer { lock.unlock() }
+        if alert?.kind == kind { alert = nil }
+    }
+
     public func clearAlerts() {
         lock.lock(); defer { lock.unlock() }
         alert = nil; indicator = nil
@@ -222,6 +228,11 @@ public final class Animator {
     private func drawAlert(_ a: ActiveAlert, age: Double, into f: inout Frame) {
         let s = a.style
         let keys = a.keys.sorted { ($0.col, $0.row) < ($1.col, $1.row) }
+        // Fade the rest of the keyboard so the alert stands out over any effect.
+        if keys.count < KeyLayout.keys.count {
+            let fade = 1 - 0.85 * min(1, age / 0.25)
+            for i in f.pixels.indices { f.pixels[i] = f.pixels[i].scaled(fade) }
+        }
         switch s.pattern {
         case .solid:
             for k in keys { f[k.row, k.col] = s.color }
@@ -243,7 +254,7 @@ public final class Animator {
             for (i, k) in keys.enumerated() {
                 let d = pos - Double(i)
                 let w: Double = d < 0 ? 0 : max(0, 1 - d / 4)
-                f[k.row, k.col] = f[k.row, k.col].scaled(0.3).mix(s.color, max(w, 0.15))
+                f[k.row, k.col] = s.color.scaled(max(w, 0.12))
             }
         }
     }

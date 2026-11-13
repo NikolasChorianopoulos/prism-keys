@@ -202,6 +202,7 @@ final class AppModel: ObservableObject {
         case "effect": if let t = EffectType(rawValue: arg) { selectEffect(t) }
         case "lights": setLights(arg != "off")
         case "gamemode": engine.setGameMode(arg != "off")
+        case "diagnose": if arg == "ax" { AXTree.dumpStructure() } else { NotificationWatcher.diagnose() }
         case "settings": WindowRouter.openSettings?()
         case "identify":
             if let keys = try? KeyLayout.resolve(arg) { engine.identify(keys, seconds: 20) }

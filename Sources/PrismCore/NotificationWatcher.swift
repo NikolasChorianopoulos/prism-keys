@@ -1,10 +1,21 @@
+import AppKit
 import Foundation
 import SQLite3
 
 /// Watches macOS Notification Center's database for newly delivered notifications.
 /// Reading it requires "Full Disk Access" for the process (System Settings → Privacy & Security).
 public final class NotificationWatcher {
-    public struct Note { public let app: String; public let title: String; public let subtitle: String; public let body: String }
+    public struct Note {
+        /// Bundle id (database watcher) or app display name (banner watcher)
+        public let app: String
+        public let title: String
+        public let subtitle: String
+        public let body: String
+        /// Button / action titles on the banner (e.g. "Accept Decline" for calls)
+        public var buttons: String = ""
+        /// Set for on-screen banners, so we can tell when they go away.
+        public var bannerID: String?
+    }
 
     public var onNotification: ((Note) -> Void)?
     private var lastID: Int64 = -1
@@ -96,14 +107,117 @@ public final class NotificationWatcher {
         if !warned { log("notifications: \(s)"); warned = true }
     }
 
+    /// Logs the layout of the notification database (no notification content).
+    public static func diagnose() {
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        let group = "\(home)/Library/Group Containers/group.com.apple.usernoted"
+        if let e = FileManager.default.enumerator(atPath: group) {
+            var files: [String] = []
+            while let f = e.nextObject() as? String { if files.count < 40 { files.append(f) } }
+            log("diag: \(group) contains \(files)")
+        } else { log("diag: can't list \(group)") }
+        if let d = darwinUserDir() {
+            let alt = "\(d)/com.apple.notificationcenter"
+            log("diag: \(alt) exists=\(FileManager.default.fileExists(atPath: alt)) contents=\((try? FileManager.default.contentsOfDirectory(atPath: alt)) ?? [])")
+        }
+        guard let path = databasePath() else { log("diag: no db path"); return }
+        var db: OpaquePointer?
+        defer { sqlite3_close(db) }
+        guard sqlite3_open_v2(path, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else { log("diag: can't open \(path)"); return }
+        var st: OpaquePointer?
+        var tables: [String] = []
+        if sqlite3_prepare_v2(db, "SELECT name FROM sqlite_master WHERE type='table'", -1, &st, nil) == SQLITE_OK {
+            while sqlite3_step(st) == SQLITE_ROW { tables.append(String(cString: sqlite3_column_text(st, 0))) }
+        }
+        sqlite3_finalize(st)
+        var counts: [String] = []
+        for t in tables {
+            if sqlite3_prepare_v2(db, "SELECT count(*) FROM \"\(t)\"", -1, &st, nil) == SQLITE_OK, sqlite3_step(st) == SQLITE_ROW {
+                counts.append("\(t)=\(sqlite3_column_int64(st, 0))")
+            }
+            sqlite3_finalize(st)
+        }
+        log("diag: db \(path) tables: \(counts.joined(separator: ", "))")
+        func shape(_ o: Any, _ depth: Int = 0) -> String {
+            if depth > 3 { return "…" }
+            if let a = o as? [Any] { return "array[\(a.count)] of \(a.first.map { shape($0, depth + 1) } ?? "-")" }
+            if let d = o as? [String: Any] {
+                return "dict{" + d.keys.sorted().map { "\($0): \(shape(d[$0]!, depth + 1))" }.joined(separator: ", ") + "}"
+            }
+            if o is Data { return "data(\((o as! Data).count))" }
+            if o is String { return "string" }
+            if o is NSNumber { return "number" }
+            if o is Date { return "date" }
+            return "\(type(of: o))"
+        }
+        var sizes: [Int] = []
+        if sqlite3_prepare_v2(db, "SELECT app_id, length(list), typeof(list) FROM delivered", -1, &st, nil) == SQLITE_OK {
+            while sqlite3_step(st) == SQLITE_ROW { sizes.append(Int(sqlite3_column_int64(st, 1))) }
+            log("diag: delivered blob sizes \(sizes) type=\(sizes.isEmpty ? "-" : "")")
+        } else { log("diag: size query failed: \(String(cString: sqlite3_errmsg(db)))") }
+        sqlite3_finalize(st)
+        if sqlite3_prepare_v2(db, "SELECT d.app_id, a.identifier, d.list FROM delivered d LEFT JOIN app a ON a.app_id = d.app_id WHERE length(d.list) > 0 ORDER BY length(d.list) DESC LIMIT 2", -1, &st, nil) != SQLITE_OK {
+            log("diag: blob query failed: \(String(cString: sqlite3_errmsg(db)))")
+        } else {
+            while sqlite3_step(st) == SQLITE_ROW {
+                let n = Int(sqlite3_column_bytes(st, 2))
+                guard let b = sqlite3_column_blob(st, 2) else { log("diag: nil blob"); continue }
+                let data = Data(bytes: b, count: n)
+                let head = data.prefix(8).map { String(format: "%02x", $0) }.joined()
+                var fmt = PropertyListSerialization.PropertyListFormat.binary
+                if let o = try? PropertyListSerialization.propertyList(from: data, format: &fmt) {
+                    log("diag: delivered row bytes=\(n) plist: \(shape(o))")
+                } else {
+                    log("diag: delivered row bytes=\(n) not a plist, head=\(head)")
+                }
+            }
+        }
+        sqlite3_finalize(st)
+        for t in ["delivered", "displayed", "requests", "app"] {
+            var cols: [String] = []
+            if sqlite3_prepare_v2(db, "PRAGMA table_info(\"\(t)\")", -1, &st, nil) == SQLITE_OK {
+                while sqlite3_step(st) == SQLITE_ROW {
+                    cols.append("\(String(cString: sqlite3_column_text(st, 1))):\(String(cString: sqlite3_column_text(st, 2)))")
+                }
+            }
+            sqlite3_finalize(st)
+            log("diag: \(t)(\(cols.joined(separator: ", ")))")
+        }
+    }
+
     /// Classifies a notification using the profile's alert settings. nil = ignore.
     public static func classify(_ n: Note, _ s: AlertSettings) -> Animator.AlertKind? {
-        let app = n.app.lowercased()
-        if s.ignoreApps.contains(where: { $0.lowercased() == app }) { return nil }
+        func matches(_ list: [String]) -> Bool { list.contains { appMatches($0, n.app) } }
+        if matches(s.ignoreApps) { return nil }
+        if n.app.lowercased().hasPrefix("prism keys") { return nil }
         let text = "\(n.title) \(n.subtitle) \(n.body)".lowercased()
-        if s.callApps.contains(where: { $0.lowercased() == app }) { return .call }
+        let buttons = n.buttons.lowercased()
+        if matches(s.callApps) { return .call }
+        if ["accept", "answer", "decline", "αποδοχή", "απόρριψη"].contains(where: { buttons.contains($0) }) { return .call }
         if s.callKeywords.contains(where: { !$0.isEmpty && text.contains($0.lowercased()) }) { return .call }
-        if !s.onlyApps.isEmpty && !s.onlyApps.contains(where: { $0.lowercased() == app }) { return nil }
+        if !s.onlyApps.isEmpty && !matches(s.onlyApps) { return nil }
         return .notify
+    }
+
+    /// True if `entry` (a bundle id or app name from the settings) refers to `app`
+    /// (a bundle id from the database, or a display name from a banner).
+    static func appMatches(_ entry: String, _ app: String) -> Bool {
+        let e = entry.lowercased(), a = app.lowercased()
+        if e == a { return true }
+        return displayName(forBundleID: entry)?.lowercased() == a
+    }
+
+    private static var nameCache: [String: String?] = [:]
+    private static let cacheLock = NSLock()
+    static func displayName(forBundleID id: String) -> String? {
+        guard id.contains(".") else { return nil }
+        cacheLock.lock(); defer { cacheLock.unlock() }
+        if let cached = nameCache[id] { return cached }
+        var name: String?
+        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: id) {
+            name = FileManager.default.displayName(atPath: url.path).replacingOccurrences(of: ".app", with: "")
+        }
+        nameCache[id] = name
+        return name
     }
 }

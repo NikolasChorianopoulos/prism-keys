@@ -182,8 +182,8 @@ struct MenuView: View {
         if needsTap && !model.status.keyTap {
             return AnyView(Banner(text: "Macros & typing effects need Accessibility access.", action: "Grant") { Permissions.requestAccessibility() })
         }
-        if model.profile.alerts.watchNotifications && model.status.notifications != "watching" && model.status.notifications != "not started" {
-            return AnyView(Banner(text: "Notification alerts need Full Disk Access.", action: "Open") { Permissions.open("Privacy_AllFiles") })
+        if model.profile.alerts.watchNotifications && !model.status.keyTap {
+            return AnyView(Banner(text: "Notification alerts need Accessibility access.", action: "Grant") { Permissions.requestAccessibility() })
         }
         return nil
     }

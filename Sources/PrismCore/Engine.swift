@@ -29,6 +29,10 @@ public final class Engine {
     private let tap = KeyTap()
     private let macros = MacroRunner()
     private let watcher = NotificationWatcher()
+    private let bannerWatcher = AXNotificationWatcher()
+    private var lastAlert: (kind: Animator.AlertKind, at: Date)?
+    private var callBannerID: String?
+    private var lastBannerAt: Date?
     private let queue = DispatchQueue(label: "prismkeys.engine")
     private var softwareActive = false
     private var lastFrame: [RGB] = []
@@ -67,15 +71,33 @@ public final class Engine {
         rebuildSlots()
         syncDriverMode(settings.driverMode)
 
-        watcher.onNotification = { [weak self] n in
-            guard let self else { return }
-            guard self.profile.alerts.watchNotifications else { return }
-            if let kind = NotificationWatcher.classify(n, self.profile.alerts) {
-                log("notification from \(n.app) → \(kind.rawValue)")
+        let handler: (NotificationWatcher.Note, String) -> Void = { [weak self] n, source in
+            guard let self, self.profile.alerts.watchNotifications else { return }
+            guard let kind = NotificationWatcher.classify(n, self.profile.alerts) else { return }
+            self.queue.async {
+                // Both watchers may see the same notification: ignore repeats for 3 s.
+                if source == "banner" { self.lastBannerAt = Date() }
+                // The database copy arrives late; skip it if a banner was just handled.
+                if source == "database", let b = self.lastBannerAt, Date().timeIntervalSince(b) < 15 { return }
+                if kind == .call, let id = n.bannerID { self.callBannerID = id }
+                if let l = self.lastAlert, l.kind == kind, Date().timeIntervalSince(l.at) < 3 { return }
+                self.lastAlert = (kind, Date())
+                log("notification (\(source)) from \(n.app) → \(kind.rawValue)")
                 self.animator.trigger(kind)
             }
         }
+        watcher.onNotification = { handler($0, "database") }
+        bannerWatcher.onNotification = { handler($0, "banner") }
+        bannerWatcher.onBannerGone = { [weak self] id in
+            self?.queue.async {
+                guard let self, id == self.callBannerID else { return }
+                self.callBannerID = nil
+                log("call banner closed → ending call alert")
+                self.animator.endAlert(.call)
+            }
+        }
         watcher.start()
+        bannerWatcher.start()
 
         let nc = NSWorkspace.shared.notificationCenter
         nc.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: nil) { [weak self] _ in
@@ -265,8 +287,9 @@ public final class Engine {
         let f = animator.render()
         if f.pixels == lastFrame && softwareActive { return }
         do {
-            try kb.writeFrame(f, fast: true)
-            if !softwareActive { try kb.effectCustom(); softwareActive = true }
+            // This keyboard only displays a new frame after the "custom effect" command.
+            try kb.showFrame(f, fast: true)
+            softwareActive = true
             lastFrame = f.pixels
         } catch {
             log("frame write failed: \(error)"); self.kb = nil; status.connected = false

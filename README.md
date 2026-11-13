@@ -28,9 +28,9 @@ Supported: BlackWidow Chroma (`1532:0203`), plus the Tournament Edition and Over
 
 | Permission | Needed for |
 |---|---|
-| Accessibility | Macros, typing effects (Ripple, Heatmap), stopping alerts with a key press |
-| Full Disk Access | Notification and call alerts. macOS only lets apps see notifications by reading its notification list. |
-| Input Monitoring | The one-time M1–M5 setup |
+| Accessibility | Macros, notification and call alerts (read from on-screen banners), typing effects |
+| Input Monitoring | M1–M5 keys, and the Fn shortcuts while they're enabled |
+| Full Disk Access | Optional: a second way to catch notifications |
 
 Basic lighting needs no permissions.
 

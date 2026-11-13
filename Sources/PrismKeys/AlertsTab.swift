@@ -13,9 +13,13 @@ struct AlertsTab: View {
                         .toggleStyle(.switch)
                     Spacer()
                 }
-                if !fda {
-                    Banner(text: "To see your notifications, Prism Keys needs Full Disk Access (macOS has no other way for an app to read them). Add Prism Keys in System Settings, then restart the app.",
-                           action: "Open Settings") { Permissions.open("Privacy_AllFiles") }
+                if !model.status.keyTap {
+                    Banner(text: "Prism Keys sees notification banners through Accessibility access. Grant it to use alerts.",
+                           action: "Grant") { Permissions.requestAccessibility() }
+                } else {
+                    Text("Alerts react to the notification banners macOS shows. Notifications that Focus or Do Not Disturb silences won't light the keyboard either."
+                         + (fda ? "" : " Optional: Full Disk Access lets Prism Keys catch some notifications from macOS's notification list as well."))
+                        .font(.caption).foregroundStyle(.secondary)
                 }
                 AlertStyleEditor(title: "Notifications", symbol: "bell.fill",
                                  style: $model.profile.alerts.notification) { model.engine.trigger(.notify) }
