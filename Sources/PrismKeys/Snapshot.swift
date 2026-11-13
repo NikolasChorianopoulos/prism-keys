@@ -16,6 +16,7 @@ enum Snapshot {
         if let p = env["SNAPSHOT_PRODUCT"], let pid = UInt16(p.replacingOccurrences(of: "0x", with: ""), radix: 16) {
             model.status.connected = true; model.status.productID = pid
             model.status.model = RazerKeyboard.model(productID: pid)?.name; model.status.firmware = "v1.0"
+            model.status.keyTap = true; model.status.mKeysActive = true
         }
         if let u = env["SNAPSHOT_UNSUPPORTED"] { model.status.unsupported = u }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
@@ -30,6 +31,7 @@ enum Snapshot {
     static func render<V: View>(_ v: V, _ name: String, _ dir: URL, _ model: AppModel, _ updater: UpdaterManager) {
         let host = NSHostingView(rootView: v.environmentObject(model).environmentObject(updater))
         let size = host.fittingSize
+        log("snapshot \(name): \(size.width)x\(size.height)")
         let win = NSWindow(contentRect: NSRect(origin: NSPoint(x: -6000, y: -6000), size: size), styleMask: [.borderless], backing: .buffered, defer: false)
         win.appearance = NSAppearance(named: .darkAqua)
         win.backgroundColor = NSColor.windowBackgroundColor

@@ -5,28 +5,17 @@ import SwiftUI
 @main
 struct PrismKeysApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var delegate
-    @StateObject private var model = AppModel.shared
-    @StateObject private var updater = UpdaterManager.shared
 
     var body: some Scene {
-        MenuBarExtra {
-            MenuView()
-                .environmentObject(model)
-                .environmentObject(updater)
-        } label: {
-            MenuBarLabel(connected: model.status.connected)
-        }
-        .menuBarExtraStyle(.window)
-
-        Window("Prism Keys Settings", id: "settings") {
-            SettingsView()
-                .environmentObject(model)
-                .environmentObject(updater)
-                .onAppear { NSApp.setActivationPolicy(.regular); NSApp.activate(ignoringOtherApps: true) }
-                .onDisappear { NSApp.setActivationPolicy(.accessory) }
-        }
-        .windowResizability(.contentSize)
-        .defaultPosition(.center)
+        // The menu bar icon, dropdown and Settings window are managed by StatusBarController and
+        // SettingsWindowController. SwiftUI still needs one scene: this one is never shown.
+        MenuBarExtra("Prism Keys", isInserted: .constant(false)) { EmptyView() }
+            .commands {
+                CommandGroup(replacing: .appSettings) {
+                    Button("Settings…") { SettingsWindowController.shared.show() }
+                        .keyboardShortcut(",", modifiers: .command)
+                }
+            }
     }
 }
 
@@ -34,8 +23,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         KeyboardPalette.install()
-        _ = AppModel.shared
-        Snapshot.runIfRequested()
+        MainActor.assumeIsolated {
+            _ = AppModel.shared
+            WindowRouter.openSettings = { SettingsWindowController.shared.show() }
+            let snapshot = CommandLine.arguments.contains("--snapshot")
+            if !snapshot {
+                StatusBarController.shared.install()
+                if !UserDefaults.standard.bool(forKey: "didOnboard") {
+                    UserDefaults.standard.set(true, forKey: "didOnboard")
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { SettingsWindowController.shared.show() }
+                }
+            }
+            Snapshot.runIfRequested()
+        }
+    }
+
+    /// Reopening the app (e.g. double-clicking it in Applications) shows Settings.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        MainActor.assumeIsolated { SettingsWindowController.shared.show() }
+        return false
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -55,39 +61,4 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 /// Opens the settings window from anywhere (menu, URL, etc.).
 enum WindowRouter {
     @MainActor static var openSettings: (() -> Void)?
-}
-
-/// The menu bar icon. It exists from launch, so it's where we grab `openWindow`.
-struct MenuBarLabel: View {
-    let connected: Bool
-    @Environment(\.openWindow) private var openWindow
-    var body: some View {
-        Image(nsImage: MenuBarIcon.image(active: connected))
-            .help("Prism Keys")
-            .onAppear {
-                // SwiftUI doesn't reliably put a tooltip on the menu bar item, so set it on the
-                // underlying status bar button directly.
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { MenuBarTooltip.apply("Prism Keys") }
-                WindowRouter.openSettings = {
-                    openWindow(id: "settings")
-                    NSApp.activate(ignoringOtherApps: true)
-                }
-                if !UserDefaults.standard.bool(forKey: "didOnboard"), !CommandLine.arguments.contains("--snapshot") {
-                    UserDefaults.standard.set(true, forKey: "didOnboard")
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { WindowRouter.openSettings?() }
-                }
-            }
-    }
-}
-
-enum MenuBarTooltip {
-    static func apply(_ text: String) {
-        for window in NSApp.windows where String(describing: type(of: window)).contains("StatusBar") {
-            func visit(_ v: NSView) {
-                if let b = v as? NSButton { b.toolTip = text }
-                v.subviews.forEach(visit)
-            }
-            if let content = window.contentView { visit(content) }
-        }
-    }
 }

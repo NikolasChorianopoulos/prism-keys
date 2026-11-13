@@ -4,7 +4,6 @@ import SwiftUI
 struct MenuView: View {
     @EnvironmentObject var model: AppModel
     @EnvironmentObject var updater: UpdaterManager
-    @Environment(\.openWindow) private var openWindow
 
     private var quickColors: [RGB] { KeyboardPalette.colors.map(\.rgb) }
 
@@ -26,6 +25,7 @@ struct MenuView: View {
         }
         .padding(14)
         .frame(width: 320)
+
     }
 
     // MARK: sections
@@ -199,9 +199,9 @@ struct MenuView: View {
     }
 
     private func openSettings() {
-        openWindow(id: "settings")
-        NSApp.activate(ignoringOtherApps: true)
+        SettingsWindowController.shared.show()
     }
+
 
     private func shortName(_ s: String?) -> String { (s ?? "").replacingOccurrences(of: "Razer ", with: "") }
 }
