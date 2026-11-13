@@ -36,8 +36,8 @@ enum VisualLayout {
                 x += w
             }
         }
-        // The logo sits below the spacebar on this keyboard.
-        caps.append(Cap(id: "logo", x: 6.875, y: 6.5, w: 2.5, h: 0.7))
+        // The logo sits centered on the bottom edge, below the gap between F8 and F9 (x = 12.0).
+        caps.append(Cap(id: "logo", x: 10.75, y: 6.5, w: 2.5, h: 0.7))
         return caps
     }()
 

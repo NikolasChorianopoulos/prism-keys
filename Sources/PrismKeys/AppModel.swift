@@ -48,7 +48,8 @@ final class AppModel: ObservableObject {
                 self.scheduleSave(p, s)
             }
             .store(in: &bag)
-        engine.start()
+        // Snapshot mode only renders views; it must never touch the keyboard.
+        if !CommandLine.arguments.contains("--snapshot") { engine.start() }
     }
 
     private func scheduleSave(_ p: Profile, _ s: Store.Settings) {
