@@ -62,7 +62,11 @@ struct MenuBarLabel: View {
     @Environment(\.openWindow) private var openWindow
     var body: some View {
         Image(nsImage: MenuBarIcon.image(active: connected))
+            .help("Prism Keys")
             .onAppear {
+                // SwiftUI doesn't reliably put a tooltip on the menu bar item, so set it on the
+                // underlying status bar button directly.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { MenuBarTooltip.apply("Prism Keys") }
                 WindowRouter.openSettings = {
                     openWindow(id: "settings")
                     NSApp.activate(ignoringOtherApps: true)
@@ -72,5 +76,17 @@ struct MenuBarLabel: View {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { WindowRouter.openSettings?() }
                 }
             }
+    }
+}
+
+enum MenuBarTooltip {
+    static func apply(_ text: String) {
+        for window in NSApp.windows where String(describing: type(of: window)).contains("StatusBar") {
+            func visit(_ v: NSView) {
+                if let b = v as? NSButton { b.toolTip = text }
+                v.subviews.forEach(visit)
+            }
+            if let content = window.contentView { visit(content) }
+        }
     }
 }
