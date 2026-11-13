@@ -12,6 +12,7 @@ A menu bar app that brings lighting, key remapping, macros and notification aler
 - **Per-key colors:** click keys on an on-screen keyboard to paint them.
 - **Remapping:** remap any key on the Razer keyboard only. Your Mac's built-in keyboard isn't affected.
 - **Macros:** type text, press shortcuts, wait, open apps or URLs, run shell commands. Attach them to any key, including M1–M5.
+- **M1–M5 keys:** turn on "Enable M1–M5 keys". The keyboard switches to driver mode, and Prism Keys handles the Fn shortcuts itself: F1–F3 volume, F5–F7 media, F10 Gaming mode (Win/⌘ key off, with its indicator light), F11/F12 brightness, Pause sleep. Quitting the app hands them back to the keyboard.
 - **Notification and call alerts:** a sweep across the F-keys for notifications, and a pulse over the whole keyboard for incoming calls (FaceTime/iPhone, or any app whose notification says "incoming call"). A reminder can stay lit until you press a key.
 - **Profiles:** export them and import them on another Mac.
 - **Automatic updates** via Sparkle.
@@ -32,6 +33,11 @@ Supported: BlackWidow Chroma (`1532:0203`), plus the Tournament Edition and Over
 | Input Monitoring | The one-time M1–M5 setup |
 
 Basic lighting needs no permissions.
+
+### Troubleshooting
+
+- **The keyboard flickers on bright colors, especially white.** It isn't getting enough power, which is common behind USB hubs. Plug it straight into the Mac, use a powered hub, or lower Settings → General → Maximum brightness.
+- **A permission is on in System Settings but Prism Keys says it's missing.** That entry belongs to an older build. Run `tccutil reset All app.prismkeys.PrismKeys`, reopen Prism Keys and grant again.
 
 ### Using it from Shortcuts or scripts
 

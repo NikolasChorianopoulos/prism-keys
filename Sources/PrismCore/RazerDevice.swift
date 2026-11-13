@@ -163,6 +163,11 @@ public final class RazerKeyboard {
         try command(0x03, 0x0A, [0x05, 0x01], readResponse: !fast)
     }
 
+    // MARK: - Indicator LEDs (game mode 0x08, macro recording 0x07)
+    public static let gameLED: UInt8 = 0x08
+    public static let macroLED: UInt8 = 0x07
+    public func setLED(_ led: UInt8, on: Bool) throws { try command(0x03, 0x00, [0x01, led, on ? 1 : 0]) }
+
     // MARK: - Device mode
     /// 0x00 = normal (firmware handles everything), 0x03 = driver mode.
     public func setDeviceMode(_ mode: UInt8) throws { try command(0x00, 0x04, [mode, 0x00]) }

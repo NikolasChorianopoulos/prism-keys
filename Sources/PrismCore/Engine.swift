@@ -132,6 +132,7 @@ public final class Engine {
         special.stop()
         queue.sync {
             guard let kb else { return }
+            if gameMode { try? kb.setLED(RazerKeyboard.gameLED, on: false) }
             try? kb.setDeviceMode(0x00)
             _ = Remapper.apply(profile, model: kb.model, includeMacros: false)
         }
@@ -142,6 +143,7 @@ public final class Engine {
             self.gameMode = on
             self.status.gameMode = on
             log("gaming mode \(on ? "on" : "off")")
+            try? self.kb?.setLED(RazerKeyboard.gameLED, on: on)
             self.applyRemaps(force: true)
         }
     }
@@ -219,6 +221,7 @@ public final class Engine {
         log("connected: \(k.model.name) \(fw ?? "")")
         status.connected = true; status.model = k.model.name; status.firmware = fw
         try? k.setDeviceMode(driverActive ? 0x03 : 0x00)
+        if driverActive { try? k.setLED(RazerKeyboard.gameLED, on: gameMode) }
         appliedRemapKey = ""
         applyRemaps(force: true)
         softwareActive = false
@@ -301,6 +304,11 @@ public final class Engine {
             self.driverActive = active
             self.status.mKeysActive = active
             self.status.mKeysError = failure
+            if !active && self.gameMode {
+                self.gameMode = false; self.status.gameMode = false
+                try? self.kb?.setLED(RazerKeyboard.gameLED, on: false)
+                self.applyRemaps(force: true)
+            }
             try? self.kb?.setDeviceMode(active ? 0x03 : 0x00)
             log("M-keys \(active ? "enabled (driver mode)" : "disabled")\(failure.map { " — \($0)" } ?? "")")
         }

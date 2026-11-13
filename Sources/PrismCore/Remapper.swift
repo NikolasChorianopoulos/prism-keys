@@ -47,11 +47,13 @@ public enum Remapper {
             pairs.append((src, dst))
         }
         for (name, slot) in assigned {
-            guard let k = KeyLayout.key(name), let src = sourceUsage(k) else {
-                warnings.append("Macro on '\(name)' can't fire yet: the keyboard doesn't report this key to macOS (use the M-key setup in Settings → Keys & Macros).")
-                continue
-            }
+            guard let k = KeyLayout.key(name), let src = sourceUsage(k) else { continue }
             pairs.append((src, slot.usage))
+        }
+        if gameMode {
+            // Gaming mode: the Windows/⌘ key does nothing (overrides any remap of it).
+            pairs.removeAll { $0.0 == 0xE3 }
+            pairs.append((0xE3, 0x00))
         }
         return (pairs, warnings)
     }
