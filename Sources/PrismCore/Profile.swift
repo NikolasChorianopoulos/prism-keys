@@ -153,6 +153,8 @@ public struct Profile: Codable, Equatable {
     /// True if this profile needs the background service for its lighting.
     public var needsServiceForLighting: Bool {
         if !effect.type.isHardware { return true }
+        // The keyboard's own Reactive effect has no background color.
+        if effect.type == .reactive && effect.background != nil { return true }
         if !keyColors.isEmpty && effect.type != .static && effect.type != .off { return true }
         return false
     }

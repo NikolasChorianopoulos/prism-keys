@@ -118,7 +118,7 @@ struct MenuView: View {
                     Image(systemName: "arrow.right").tag("right")
                 }.pickerStyle(.segmented)
             }
-            if !t.isHardware || !model.profile.keyColors.isEmpty {
+            if model.profile.needsServiceForLighting {
                 Label(model.profile.keyColors.isEmpty ? "Animated by Prism Keys while it's running" : "\(model.profile.keyColors.count) custom key colors on top",
                       systemImage: "info.circle")
                     .font(.caption).foregroundStyle(.secondary)
@@ -186,7 +186,7 @@ struct MenuView: View {
 
     private var permissionBanner: AnyView? {
         let t = model.profile.effect.type
-        let needsTap = t.usesTyping || !model.profile.macros.isEmpty || (t == .reactive && !model.profile.keyColors.isEmpty)
+        let needsTap = t.usesTyping || !model.profile.macros.isEmpty || (t == .reactive && model.profile.needsServiceForLighting)
         if needsTap && !model.status.keyTap {
             return AnyView(Banner(text: "Macros & typing effects need Accessibility access.", action: "Grant") { Permissions.requestAccessibility() })
         }
