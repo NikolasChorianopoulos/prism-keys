@@ -113,3 +113,32 @@ import Testing
         #expect(a.profileNames().isEmpty)
     }
 }
+/// Which notifications count as calls. Uses the default alert settings.
+@Suite struct AlertClassificationTests {
+    let s = AlertSettings()
+    func note(_ app: String, _ title: String = "Someone", _ body: String = "", buttons: String = "") -> NotificationWatcher.Note {
+        NotificationWatcher.Note(app: app, title: title, subtitle: "", body: body, buttons: buttons)
+    }
+
+    @Test func faceTimeCallBannerIsACall() {
+        // What a real incoming iPhone/FaceTime call banner reported on macOS 27.
+        #expect(NotificationWatcher.classify(note("FaceTime Notification"), s) == .call)
+        #expect(NotificationWatcher.classify(note("FaceTime"), s) == .call)
+        #expect(NotificationWatcher.classify(note("com.apple.FaceTime"), s) == .call)
+    }
+
+    @Test func callButtonsOrWordsMakeACall() {
+        #expect(NotificationWatcher.classify(note("WhatsApp", buttons: "Decline Accept"), s) == .call)
+        #expect(NotificationWatcher.classify(note("Teams", "Alex", "Incoming call"), s) == .call)
+    }
+
+    @Test func similarlyNamedAppsAreNotCalls() {
+        #expect(NotificationWatcher.classify(note("iPhone Mirroring"), s) == .notify)
+        #expect(NotificationWatcher.classify(note("Messages", "Alex", "see you at 5"), s) == .notify)
+    }
+
+    @Test func ignoredAppsAreIgnored() {
+        var t = s; t.ignoreApps = ["com.apple.Music"]
+        #expect(NotificationWatcher.classify(note("Music Notification"), t) == nil || NotificationWatcher.classify(note("Music"), t) == nil)
+    }
+}

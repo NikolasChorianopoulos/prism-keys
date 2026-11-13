@@ -31,7 +31,7 @@ If you plug in a Razer keyboard that isn't supported, Prism Keys says so and off
 - **Windows-style keys:** Num Lock switches the numpad between numbers and arrows, Caps Lock is shared with your Mac's keyboard, and Home/End/Page Up/Page Down move the cursor in text fields.
 
 **Alerts**
-- A light sweep across the F-keys for notifications, and a pulse over the whole keyboard for incoming calls (FaceTime/iPhone, or any app whose notification says "incoming call").
+- A light sweep across the F-keys for notifications, and a pulse over the whole keyboard for incoming calls (iPhone calls via Continuity and FaceTime, tested with a real call; or any app whose notification says "incoming call").
 - A reminder, in a color you choose, can stay lit until you press a key. A call alert stops when the call banner goes away.
 - While an alert plays, the rest of the keyboard dims so it stands out. How much is adjustable, from not at all to fully off.
 - A warning appears if an alert or reminder color is the same as your lighting color.

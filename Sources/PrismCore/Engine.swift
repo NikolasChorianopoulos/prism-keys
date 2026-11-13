@@ -115,7 +115,7 @@ public final class Engine {
                 if kind == .call, let id = n.bannerID { self.callBannerID = id }
                 if let l = self.lastAlert, l.kind == kind, Date().timeIntervalSince(l.at) < 3 { return }
                 self.lastAlert = (kind, Date())
-                log("notification (\(source)) from \(n.app) → \(kind.rawValue)")
+                log("notification (\(source)) from \(n.app) → \(kind.rawValue)\(n.buttons.isEmpty ? "" : " [buttons: \(n.buttons)]")")
                 self.animator.trigger(kind)
             }
         }

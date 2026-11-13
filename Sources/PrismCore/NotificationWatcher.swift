@@ -201,10 +201,15 @@ public final class NotificationWatcher {
 
     /// True if `entry` (a bundle id or app name from the settings) refers to `app`
     /// (a bundle id from the database, or a display name from a banner).
+    /// Banners can add words after the app's name (an incoming FaceTime/iPhone call shows as
+    /// "FaceTime Notification"), so a name that *starts with* the app's name also matches.
     static func appMatches(_ entry: String, _ app: String) -> Bool {
         let e = entry.lowercased(), a = app.lowercased()
         if e == a { return true }
-        return displayName(forBundleID: entry)?.lowercased() == a
+        for name in [e, displayName(forBundleID: entry)?.lowercased()].compactMap({ $0 }) where !name.contains(".") || name == e {
+            if a == name || a.hasPrefix(name + " ") { return true }
+        }
+        return false
     }
 
     private static var nameCache: [String: String?] = [:]
