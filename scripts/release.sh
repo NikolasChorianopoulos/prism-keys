@@ -15,6 +15,8 @@ git commit -qm "Release $NEW" VERSION
 scripts/build-app.sh
 scripts/make-dmg.sh
 DMG="dist/PrismKeys-$NEW.dmg"
+# Fixed-name copy: the README's download button links to releases/latest/download/PrismKeys.dmg
+cp "$DMG" dist/PrismKeys.dmg
 BUILD=$(git rev-list --count HEAD)
 
 SIG=$(.build/sparkle-tools/bin/sign_update "$DMG")   # → sparkle:edSignature="…" length="…"
@@ -42,9 +44,9 @@ if command -v gh >/dev/null; then
   read -r -p "Publish v$NEW to GitHub now (push tag + create release)? [y/N] " ok
   if [ "$ok" = "y" ]; then
     git push && git push origin "v$NEW"
-    gh release create "v$NEW" "$DMG" dist/appcast.xml --repo "$GITHUB_REPO" --title "Prism Keys $NEW" --notes "$NOTES"
+    gh release create "v$NEW" "$DMG" dist/PrismKeys.dmg dist/appcast.xml --repo "$GITHUB_REPO" --title "Prism Keys $NEW" --notes "$NOTES"
     echo "✓ Released. Installed copies will see the update within a day (or via Check for Updates)."
   fi
 else
-  echo "Upload $DMG and dist/appcast.xml to a GitHub release named v$NEW."
+  echo "Upload $DMG, dist/PrismKeys.dmg and dist/appcast.xml to a GitHub release named v$NEW."
 fi

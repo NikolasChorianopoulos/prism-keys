@@ -15,7 +15,7 @@ enum Snapshot {
         let env = ProcessInfo.processInfo.environment
         if let p = env["SNAPSHOT_PRODUCT"], let pid = UInt16(p.replacingOccurrences(of: "0x", with: ""), radix: 16) {
             model.status.connected = true; model.status.productID = pid
-            model.status.model = RazerKeyboard.model(productID: pid)?.name; model.status.firmware = "v1.0"
+            model.status.model = RazerKeyboard.model(productID: pid)?.name; model.status.firmware = "v1.1"
             model.status.keyTap = true; model.status.mKeysActive = true
         }
         if let u = env["SNAPSHOT_UNSUPPORTED"] { model.status.unsupported = u }

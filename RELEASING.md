@@ -27,7 +27,7 @@ Notes for the maintainer: how to publish a new version so installed copies updat
 scripts/release.sh 1.0.1 "What's new in this version"
 ```
 
-This bumps `VERSION`, builds a universal DMG, signs it for Sparkle, writes `appcast.xml`, tags the release and (with the `gh` CLI) uploads both files to a GitHub release. Installed apps find it via `https://github.com/<repo>/releases/latest/download/appcast.xml`.
+This bumps `VERSION`, builds a universal DMG, signs it for Sparkle, writes `appcast.xml`, tags the release and (with the `gh` CLI) uploads the files to a GitHub release: the versioned DMG, a copy named `PrismKeys.dmg` (which the README's download button always points to) and `appcast.xml`. Installed apps find it via `https://github.com/<repo>/releases/latest/download/appcast.xml`.
 
 Version numbers: `1.0.x` for fixes, `1.x.0` for new features, `x.0.0` for big changes.
 

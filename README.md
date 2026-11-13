@@ -1,6 +1,30 @@
-# Prism Keys
+<p align="center">
+  <img src="docs/images/icon.png" width="128" alt="Prism Keys icon">
+</p>
 
-A menu bar app that brings lighting, macros, key remapping and notification alerts back to the **Razer BlackWidow Chroma** on modern macOS. It's for anyone whose keyboard is no longer supported by Razer Synapse.
+<h1 align="center">Prism Keys</h1>
+
+<p align="center">
+  Lighting, macros, M1–M5 keys and notification alerts for the <b>Razer BlackWidow Chroma</b> on modern macOS.<br>
+  For keyboards that Razer Synapse no longer supports.
+</p>
+
+<p align="center">
+  <a href="https://github.com/NikolasChorianopoulos/prism-keys/releases/latest"><img src="https://img.shields.io/github/v/release/NikolasChorianopoulos/prism-keys?label=version&color=7a5cff" alt="Latest version"></a>
+  <img src="https://img.shields.io/badge/macOS-14%2B-0a84ff" alt="macOS 14 or later">
+  <img src="https://img.shields.io/badge/Apple%20Silicon%20%26%20Intel-universal-30d158" alt="Apple Silicon and Intel">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-lightgrey" alt="MIT license"></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/NikolasChorianopoulos/prism-keys/releases/latest/download/PrismKeys.dmg"><img src="docs/images/download.svg" width="280" alt="Download for macOS"></a>
+</p>
+
+<p align="center">
+  <img src="docs/images/menu.png" width="300" alt="The Prism Keys menu">
+  &nbsp;
+  <img src="docs/images/lighting.png" width="500" alt="Per-key lighting in Settings">
+</p>
 
 > Prism Keys is an independent project. It is not affiliated with or endorsed by Razer Inc. Razer, BlackWidow and Chroma are trademarks of Razer Inc.
 
@@ -43,11 +67,16 @@ If you plug in a Razer keyboard that isn't supported, Prism Keys says so and off
 
 ## Install
 
-1. Download `PrismKeys-x.y.z.dmg` from [Releases](../../releases), open it, and drag **Prism Keys** into **Applications**.
-2. Open Prism Keys. Because the app isn't notarized by Apple, macOS blocks it the first time:
-   - **macOS 15 or later:** click **Done**, then go to **System Settings → Privacy & Security**, scroll down and click **Open Anyway** next to Prism Keys, and confirm.
-   - **macOS 14:** right-click the app → **Open**, then confirm.
-3. Prism Keys appears in the menu bar, and Settings opens on first launch.
+1. **[Download PrismKeys.dmg](https://github.com/NikolasChorianopoulos/prism-keys/releases/latest/download/PrismKeys.dmg)**, open it, and drag **Prism Keys** into **Applications**.
+2. Open Prism Keys. It appears in the menu bar, and Settings opens the first time.
+
+> [!IMPORTANT]
+> Prism Keys isn't notarized by Apple (that needs a paid developer account), so macOS blocks it the first time with an "unidentified developer" warning. Allow it once in either of these ways:
+>
+> - **System Settings:** open the app and click **Done**, then go to **System Settings → Privacy & Security**, scroll down, click **Open Anyway** next to Prism Keys and confirm. (On macOS 14 you can also right-click the app → **Open**.)
+> - **Terminal:** run `xattr -dr com.apple.quarantine "/Applications/Prism Keys.app"`, then open the app normally.
+
+After that, Prism Keys updates itself: it checks for new versions daily and offers to install them (or use **Check for Updates…** in the menu).
 
 ### Permissions
 
@@ -75,6 +104,13 @@ Turn on **M1–M5 macro keys** in the menu (or in Settings → Keys & Macros). T
 | Pause | Sleep |
 
 Quitting Prism Keys switches the keyboard back to normal mode, and the keyboard handles Fn itself again.
+
+## Screenshots
+
+<p align="center">
+  <img src="docs/images/keys.png" width="49%" alt="Remaps and macros, including M1–M5">
+  <img src="docs/images/alerts.png" width="49%" alt="Notification and call alerts">
+</p>
 
 ## Troubleshooting
 
