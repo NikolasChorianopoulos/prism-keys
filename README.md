@@ -71,10 +71,15 @@ If you plug in a Razer keyboard that isn't supported, Prism Keys says so and off
 2. Open Prism Keys. It appears in the menu bar, and Settings opens the first time.
 
 > [!IMPORTANT]
-> Prism Keys isn't notarized by Apple (that needs a paid developer account), so macOS blocks it the first time with an "unidentified developer" warning. Allow it once in either of these ways:
+> Prism Keys isn't notarized by Apple (that needs a paid developer account), so the first time you open it macOS says it *"could not verify Prism Keys is free of malware"*. Allow it once:
 >
-> - **System Settings:** open the app and click **Done**, then go to **System Settings → Privacy & Security**, scroll down, click **Open Anyway** next to Prism Keys and confirm. (On macOS 14 you can also right-click the app → **Open**.)
-> - **Terminal:** run `xattr -dr com.apple.quarantine "/Applications/Prism Keys.app"`, then open the app normally.
+> - **Recommended, Terminal:** run this, then open Prism Keys normally:
+>   ```bash
+>   xattr -dr com.apple.quarantine "/Applications/Prism Keys.app"
+>   ```
+> - **Alternative, System Settings:** after the warning, click **Done**, then go straight to **System Settings → Privacy & Security** and look at the very bottom for **Open Anyway**. It only appears for a short while after a blocked launch, and some macOS versions don't offer it at all. (On macOS 14 you can also right-click the app → **Open**.)
+>
+> Make sure to **replace** any older copy: if Finder asks, choose **Replace**, not **Keep Both**.
 
 After that, Prism Keys updates itself: it checks for new versions daily and offers to install them (or use **Check for Updates…** in the menu).
 
