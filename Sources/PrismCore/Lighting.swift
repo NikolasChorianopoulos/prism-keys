@@ -6,8 +6,8 @@ public enum Lighting {
     /// Applies lighting that the keyboard can run on its own. Returns false if the
     /// effect needs the background service (software animation).
     @discardableResult
-    public static func applyHardware(_ p: Profile, to kb: RazerKeyboard) throws -> Bool {
-        try kb.setBrightness(UInt8(max(0, min(100, p.brightness)) * 255 / 100))
+    public static func applyHardware(_ p: Profile, to kb: RazerKeyboard, maxBrightness: Int = 100) throws -> Bool {
+        try kb.setBrightness(level(p.brightness, cap: maxBrightness))
         if p.needsServiceForLighting { return false }
         let e = p.effect
         switch e.type {
@@ -24,6 +24,12 @@ public enum Lighting {
         default: return false
         }
         return true
+    }
+
+    /// Profile brightness (%) limited by the power cap (%), as a 0...255 device value.
+    public static func level(_ brightness: Int, cap: Int) -> UInt8 {
+        let b = max(0, min(100, brightness)), c = max(10, min(100, cap))
+        return UInt8(b * c * 255 / 10_000)
     }
 
     static func staticFrame(_ p: Profile, base: RGB) -> Frame {

@@ -17,6 +17,8 @@ public final class Store {
         public var lightsOffWhenDisplaySleeps: Bool = true
         /// What M1–M5 send (HID usages), learned with the M-key setup assistant.
         public var mKeyUsages: [String: UInt32] = [:]
+        /// Caps the LED brightness (%) to avoid flicker when the keyboard is on an underpowered USB hub.
+        public var maxBrightness: Int = 100
         public init() {}
         public init(from decoder: Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -24,6 +26,7 @@ public final class Store {
             driverMode = try c.decodeIfPresent(Bool.self, forKey: .driverMode) ?? false
             lightsOffWhenDisplaySleeps = try c.decodeIfPresent(Bool.self, forKey: .lightsOffWhenDisplaySleeps) ?? true
             mKeyUsages = try c.decodeIfPresent([String: UInt32].self, forKey: .mKeyUsages) ?? [:]
+            maxBrightness = try c.decodeIfPresent(Int.self, forKey: .maxBrightness) ?? 100
         }
     }
 

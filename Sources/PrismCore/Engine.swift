@@ -31,6 +31,7 @@ public final class Engine {
     private var pending: (Profile, Store.Settings)?
     private var status = EngineStatus() { didSet { if status != oldValue { let s = status; DispatchQueue.main.async { self.onStatus?(s) } } } }
     private var timer: DispatchSourceTimer?
+    private var holdUntil: Date?
 
     public init(profile: Profile, settings: Store.Settings) {
         self.profile = profile
@@ -113,17 +114,41 @@ public final class Engine {
         queue.async { try? self.kb?.setDeviceMode(on ? 0x03 : 0x00) }
     }
 
-    /// Lights specific keys for a moment so you can check the layout.
-    public func identify(_ keys: [Key]) {
+    /// Shows a fixed frame (test pattern) for a while, pausing the normal lighting.
+    public func show(_ f: Frame, for seconds: Double) {
         queue.async {
             guard let kb = self.kb else { return }
-            var f = Frame(fill: RGB(0, 0, 30))
-            for k in keys { f[k.row, k.col] = .white }
             try? kb.showFrame(f)
+            self.holdUntil = Date().addingTimeInterval(seconds)
             self.softwareActive = true
             self.lastFrame = f.pixels
-            self.queue.asyncAfter(deadline: .now() + 2.5) { self.softwareActive = false; self.applyLighting() }
         }
+    }
+
+    /// Runs a hardware command (e.g. a built-in effect) and holds it, pausing the normal lighting.
+    public func hold(for seconds: Double, _ body: @escaping (RazerKeyboard) throws -> Void) {
+        queue.async {
+            guard let kb = self.kb else { return }
+            try? body(kb)
+            self.holdUntil = Date().addingTimeInterval(seconds)
+            self.softwareActive = false
+            self.lastFrame = []
+        }
+    }
+
+    /// Ends a test pattern early and restores the profile's lighting.
+    public func endHold() {
+        queue.async {
+            guard self.holdUntil != nil else { return }
+            self.holdUntil = nil; self.softwareActive = false; self.applyLighting()
+        }
+    }
+
+    /// Lights specific keys for a moment so you can check the layout.
+    public func identify(_ keys: [Key], seconds: Double = 2.5) {
+        var f = Frame(fill: RGB(0, 0, 30))
+        for k in keys { f[k.row, k.col] = .white }
+        show(f, for: seconds)
     }
 
     // MARK: internals (on queue)
@@ -180,11 +205,11 @@ public final class Engine {
         animator.setProfile(profile)
         do {
             if animator.needsFrames {
-                try kb.setBrightness(UInt8(max(0, min(100, profile.brightness)) * 255 / 100))
+                try kb.setBrightness(Lighting.level(profile.brightness, cap: settings.maxBrightness))
                 softwareActive = false
                 lastFrame = []
             } else {
-                try Lighting.applyHardware(profile, to: kb)
+                try Lighting.applyHardware(profile, to: kb, maxBrightness: settings.maxBrightness)
                 softwareActive = false
             }
         } catch { log("apply failed: \(error)"); self.kb = nil; status.connected = false }
@@ -192,6 +217,10 @@ public final class Engine {
 
     private func renderTick() {
         guard let kb, !displayAsleep else { return }
+        if let h = holdUntil {
+            if Date() < h { return }
+            holdUntil = nil; softwareActive = false; applyLighting(); return
+        }
         if !animator.needsFrames {
             if softwareActive { softwareActive = false; applyLighting() }
             return

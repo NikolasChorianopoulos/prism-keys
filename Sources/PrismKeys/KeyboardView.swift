@@ -10,7 +10,7 @@ enum VisualLayout {
         let rows: [[(String?, Double, Double)]] = [
             [(nil, 1.25, 1), ("esc", 1, 1), (nil, 1, 1), ("f1", 1, 1), ("f2", 1, 1), ("f3", 1, 1), ("f4", 1, 1), (nil, 0.5, 1),
              ("f5", 1, 1), ("f6", 1, 1), ("f7", 1, 1), ("f8", 1, 1), (nil, 0.5, 1), ("f9", 1, 1), ("f10", 1, 1), ("f11", 1, 1), ("f12", 1, 1),
-             (nil, 0.25, 1), ("printscreen", 1, 1), ("scrolllock", 1, 1), ("pause", 1, 1), (nil, 0.25, 1), ("logo", 4, 1)],
+             (nil, 0.25, 1), ("printscreen", 1, 1), ("scrolllock", 1, 1), ("pause", 1, 1)],
             [("m1", 1, 1), (nil, 0.25, 1), ("grave", 1, 1), ("1", 1, 1), ("2", 1, 1), ("3", 1, 1), ("4", 1, 1), ("5", 1, 1), ("6", 1, 1),
              ("7", 1, 1), ("8", 1, 1), ("9", 1, 1), ("0", 1, 1), ("minus", 1, 1), ("equal", 1, 1), ("backspace", 2, 1), (nil, 0.25, 1),
              ("insert", 1, 1), ("home", 1, 1), ("pageup", 1, 1), (nil, 0.25, 1), ("numlock", 1, 1), ("kp_divide", 1, 1), ("kp_multiply", 1, 1), ("kp_minus", 1, 1)],
@@ -36,14 +36,16 @@ enum VisualLayout {
                 x += w
             }
         }
+        // The logo sits below the spacebar on this keyboard.
+        caps.append(Cap(id: "logo", x: 6.875, y: 6.5, w: 2.5, h: 0.7))
         return caps
     }()
 
     static let width = 23.75
-    static let height = 6.35
+    static let height = 7.2
 
     static let labels: [String: String] = [
-        "esc": "Esc", "printscreen": "PrtSc", "scrolllock": "ScrLk", "pause": "Pause", "logo": "◆ Logo",
+        "esc": "Esc", "printscreen": "PrtSc", "scrolllock": "ScrLk", "pause": "Pause", "logo": "◆ Razer logo",
         "grave": "`", "minus": "-", "equal": "=", "backspace": "⌫", "insert": "Ins", "home": "Home", "pageup": "PgUp",
         "numlock": "Num", "kp_divide": "/", "kp_multiply": "*", "kp_minus": "-", "tab": "Tab", "lbracket": "[", "rbracket": "]",
         "backslash": "\\", "delete": "Del", "end": "End", "pagedown": "PgDn", "kp_plus": "+", "capslock": "Caps", "semicolon": ";",

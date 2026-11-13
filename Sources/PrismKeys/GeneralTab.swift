@@ -62,6 +62,15 @@ struct GeneralTab: View {
 
                 GroupBox("Advanced") {
                     VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text("Maximum brightness")
+                            Slider(value: Binding(get: { Double(model.settings.maxBrightness) },
+                                                  set: { model.settings.maxBrightness = Int($0) }), in: 30...100, step: 5)
+                                .frame(width: 200)
+                            Text("\(model.settings.maxBrightness)%").monospacedDigit()
+                        }
+                        Text("If the keyboard flickers on bright colors (especially white), it isn't getting enough power, often because of a USB hub. Lower this, or plug the keyboard straight into the Mac.")
+                            .font(.caption).foregroundStyle(.secondary)
                         Toggle("Driver mode (makes the keyboard report M1–M5 to the Mac)", isOn: $model.settings.driverMode)
                         HStack {
                             Button("Open data folder") { NSWorkspace.shared.open(model.store.baseDir) }

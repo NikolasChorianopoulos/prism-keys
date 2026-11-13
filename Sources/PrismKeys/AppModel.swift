@@ -198,6 +198,17 @@ final class AppModel: ObservableObject {
         case "effect": if let t = EffectType(rawValue: arg) { selectEffect(t) }
         case "lights": setLights(arg != "off")
         case "settings": WindowRouter.openSettings?()
+        case "identify":
+            if let keys = try? KeyLayout.resolve(arg) { engine.identify(keys, seconds: 20) }
+        case "test":
+            switch arg {
+            case "white": engine.show(TestPattern.allKeys(), for: 300)
+            case "rainbow": engine.show(TestPattern.rainbow(), for: 300)
+            case "matrix": engine.show(TestPattern.matrix(), for: 300)
+            case "white50": engine.show(TestPattern.allKeys(level: 0.5), for: 300)
+            case "static-white": engine.hold(for: 300) { try $0.effectStatic(.white) }
+            default: engine.endHold()
+            }
         default: break
         }
     }
@@ -285,4 +296,29 @@ extension EffectType {
     }
     var usesTyping: Bool { self == .ripple || self == .heatmap }
     var hasSpeed: Bool { [.rainbow, .ripple, .starlight, .reactive].contains(self) }
+}
+
+/// Patterns for checking that every key's LED position is right.
+enum TestPattern {
+    /// Every known key white, everything else off: a dark key = wrong/missing LED position.
+    static func allKeys(level: Double = 1) -> Frame {
+        var f = Frame()
+        for k in KeyLayout.keys { f[k.row, k.col] = RGB.white.scaled(level) }
+        return f
+    }
+    /// Smooth rainbow by physical position: a key with the "wrong" color is in the wrong place.
+    static func rainbow() -> Frame {
+        var f = Frame()
+        for cap in VisualLayout.caps {
+            guard let k = KeyLayout.key(cap.id) else { continue }
+            f[k.row, k.col] = RGB.hsv((cap.x + cap.w / 2) / VisualLayout.width * 0.8, 1, 1)
+        }
+        return f
+    }
+    /// Every LED in the matrix lit (including unmapped ones): shows LEDs we don't know about.
+    static func matrix() -> Frame {
+        var f = Frame(fill: RGB(255, 0, 0))
+        for k in KeyLayout.keys { f[k.row, k.col] = RGB(0, 40, 0) }
+        return f
+    }
 }
