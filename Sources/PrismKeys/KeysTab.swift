@@ -5,7 +5,6 @@ struct KeysTab: View {
     @EnvironmentObject var model: AppModel
     @Local private var selection: Set<String> = []
     @Local private var remapTarget = "esc"
-    @Local private var showMKeyWizard = false
 
     private var selectedKey: String? { selection.count == 1 ? selection.first : nil }
 
@@ -40,22 +39,10 @@ struct KeysTab: View {
                     }
                 }
 
-                GroupBox {
-                    HStack(alignment: .top) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("M1–M5 macro keys").font(.headline)
-                            Text(model.settings.mKeyUsages.count == 5 ? "Set up ✓  — the M-keys can run macros."
-                                 : "macOS can't see the M-keys until they're set up once. This needs Input Monitoring access.")
-                                .font(.callout).foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        Button(model.settings.mKeyUsages.isEmpty ? "Set up M-keys…" : "Redo setup…") { showMKeyWizard = true }
-                    }.padding(6)
-                }
+                MKeysBox()
                 summary
             }
         }
-        .sheet(isPresented: $showMKeyWizard) { MKeyWizard().environmentObject(model) }
     }
 
     private var summary: some View {
@@ -136,8 +123,8 @@ struct KeyDetail: View {
             case .macro:
                 MacroEditor(macro: Binding(get: { model.profile.macros[key] ?? Macro(actions: []) },
                                            set: { model.profile.macros[key] = $0 }), keyName: key)
-                if key.hasPrefix("m"), KeyLayout.key(key)?.usage == nil, model.settings.mKeyUsages[key] == nil {
-                    Label("Set up the M-keys below so this macro can fire.", systemImage: "exclamationmark.triangle").foregroundStyle(.orange).font(.callout)
+                if Remapper.isDirect(key) && !model.status.mKeysActive {
+                    Label("Turn on “Enable M1–M5 keys” below so this macro can fire.", systemImage: "exclamationmark.triangle").foregroundStyle(.orange).font(.callout)
                 }
                 if !model.status.keyTap {
                     Banner(text: "Macros need Accessibility access for Prism Keys.", action: "Grant") { Permissions.requestAccessibility() }
@@ -211,72 +198,29 @@ struct MacroEditor: View {
     }
 }
 
-/// Learns what M1–M5 send so they can be remapped/used for macros.
-struct MKeyWizard: View {
+struct MKeysBox: View {
     @EnvironmentObject var model: AppModel
-    @Environment(\.dismiss) private var dismiss
-    @Local private var listener = HIDKeyListener()
-    @Local private var captured: [String: UInt32] = [:]
-    @Local private var step = 0
-    @Local private var error: String?
-    @Local private var lastSeen = ""
-    private let names = ["m1", "m2", "m3", "m4", "m5"]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Set up the M-keys").font(.title2.bold())
-            if !HIDKeyListener.hasPermission {
-                Text("Prism Keys needs **Input Monitoring** access to see what the M-keys send. Grant it, then reopen this window.")
+        GroupBox {
+            VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Button("Request access") { HIDKeyListener.requestPermission() }
-                    Button("Open System Settings") { Permissions.open("Privacy_ListenEvent") }
-                }
-            } else if step < names.count {
-                Text("Press **\(names[step].uppercased())** on the keyboard (the column on the far left).").font(.title3)
-                HStack(spacing: 10) {
-                    ForEach(names.indices, id: \.self) { i in
-                        Text(names[i].uppercased()).bold()
-                            .frame(width: 44, height: 34)
-                            .background(RoundedRectangle(cornerRadius: 6).fill(i < step ? Color.green.opacity(0.4) : i == step ? Color.accentColor.opacity(0.4) : Color.primary.opacity(0.08)))
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Enable M1–M5 keys").font(.headline)
+                        Text("Switches the keyboard to driver mode so the M-keys reach Prism Keys. Prism Keys then also handles the Fn shortcuts while it's running: F1–F3 volume, F5–F7 media, F10 gaming mode, F11/F12 brightness, Pause sleep. Quitting Prism Keys gives them back to the keyboard.")
+                            .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                     }
+                    Spacer()
+                    Toggle("", isOn: $model.settings.driverMode).toggleStyle(.switch).labelsHidden()
                 }
-                if !lastSeen.isEmpty { Text(lastSeen).font(.caption).foregroundStyle(.secondary) }
-                Divider()
-                Toggle("Driver mode", isOn: $model.settings.driverMode)
-                Text("Nothing happens when you press M1? Turn on Driver mode and try again. In driver mode the keyboard reports the M-keys to the Mac. Check afterwards that Fn+F11/F12 brightness still works.")
-                    .font(.caption).foregroundStyle(.secondary)
-            } else {
-                Label("All five M-keys are set up. Attach macros to them in Keys & Macros.", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
-            }
-            if let e = error { Text(e).foregroundStyle(.red).font(.callout) }
-            HStack {
-                Button("Cancel") { listener.stop(); dismiss() }
-                Spacer()
-                if step >= names.count {
-                    Button("Save") {
-                        model.settings.mKeyUsages = captured
-                        listener.stop(); dismiss()
-                    }.keyboardShortcut(.defaultAction)
+                if model.settings.driverMode && !model.status.mKeysActive {
+                    Banner(text: "Needs Input Monitoring access for Prism Keys, then reopen the app.", action: "Grant") {
+                        RazerInputListener.requestPermission(); Permissions.open("Privacy_ListenEvent")
+                    }
+                } else if model.status.mKeysActive {
+                    Label("Active. Press an M-key to run its macro.", systemImage: "checkmark.circle.fill").foregroundStyle(.green).font(.callout)
                 }
-            }
+            }.padding(6)
         }
-        .padding(24)
-        .frame(width: 460)
-        .onAppear(perform: start)
-        .onDisappear { listener.stop() }
-    }
-
-    private func start() {
-        guard HIDKeyListener.hasPermission else { return }
-        do {
-            try listener.start { page, usage, pressed in
-                guard pressed, step < names.count else { return }
-                lastSeen = String(format: "Last key: page 0x%02X usage 0x%02X", page, usage)
-                guard page == 0x07 else { return }
-                if captured.values.contains(usage) { return }
-                captured[names[step]] = usage
-                step += 1
-            }
-        } catch { self.error = "\(error)" }
     }
 }

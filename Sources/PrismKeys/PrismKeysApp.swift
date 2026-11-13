@@ -37,6 +37,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Snapshot.runIfRequested()
     }
 
+    func applicationWillTerminate(_ notification: Notification) {
+        MainActor.assumeIsolated {
+            AppModel.shared.flushSave()
+            AppModel.shared.engine.shutdown()
+        }
+    }
+
     /// prismkeys://alert/notify · alert/call · alert/clear · profile/<name> · effect/<name>
     /// Handy for Shortcuts and scripts: `open prismkeys://alert/notify`
     func application(_ application: NSApplication, open urls: [URL]) {

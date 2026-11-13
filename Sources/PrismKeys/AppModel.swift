@@ -32,6 +32,10 @@ final class AppModel: ObservableObject {
         if profileNames.isEmpty { try? store.save(p); profileNames = [p.name] }
 
         engine.onStatus = { [weak self] st in self?.status = st }
+        engine.onBrightnessStep = { [weak self] d in
+            guard let self else { return }
+            self.profile.brightness = max(0, min(100, self.profile.brightness + d))
+        }
         Publishers.CombineLatest($profile, $settings)
             .dropFirst()
             .sink { [weak self] p, s in
@@ -197,6 +201,7 @@ final class AppModel: ObservableObject {
         case "profile": if profileNames.contains(arg) { switchProfile(arg) }
         case "effect": if let t = EffectType(rawValue: arg) { selectEffect(t) }
         case "lights": setLights(arg != "off")
+        case "gamemode": engine.setGameMode(arg != "off")
         case "settings": WindowRouter.openSettings?()
         case "identify":
             if let keys = try? KeyLayout.resolve(arg) { engine.identify(keys, seconds: 20) }
@@ -219,7 +224,7 @@ final class AppModel: ObservableObject {
 enum Permissions {
     static var accessibility: Bool { AXIsProcessTrusted() }
     static var fullDiskAccess: Bool { NotificationWatcher.checkAccess() == nil }
-    static var inputMonitoring: Bool { HIDKeyListener.hasPermission }
+    static var inputMonitoring: Bool { RazerInputListener.hasPermission }
 
     static func requestAccessibility() {
         _ = KeyTap.isTrusted(prompt: true)

@@ -37,8 +37,8 @@ struct GeneralTab: View {
                         PermissionRow(granted: perms.fda, title: "Full Disk Access", detail: "Notification and incoming call alerts (reads macOS's notification list)") {
                             Permissions.open("Privacy_AllFiles")
                         }
-                        PermissionRow(granted: perms.im, title: "Input Monitoring", detail: "Only for the one-time M1–M5 key setup") {
-                            HIDKeyListener.requestPermission(); Permissions.open("Privacy_ListenEvent")
+                        PermissionRow(granted: perms.im, title: "Input Monitoring", detail: "M1–M5 macro keys (and the Fn shortcuts while they're enabled)") {
+                            RazerInputListener.requestPermission(); Permissions.open("Privacy_ListenEvent")
                         }
                         Text("Basic lighting needs no permissions. When macOS offers to “Quit & Reopen” after you grant something, you can pick Later: Prism Keys notices new permissions on its own (Input Monitoring is the exception and needs a reopen).")
                             .font(.caption).foregroundStyle(.secondary)
@@ -71,7 +71,6 @@ struct GeneralTab: View {
                         }
                         Text("If the keyboard flickers on bright colors (especially white), it isn't getting enough power, often because of a USB hub. Lower this, or plug the keyboard straight into the Mac.")
                             .font(.caption).foregroundStyle(.secondary)
-                        Toggle("Driver mode (makes the keyboard report M1–M5 to the Mac)", isOn: $model.settings.driverMode)
                         HStack {
                             Button("Open data folder") { NSWorkspace.shared.open(model.store.baseDir) }
                             Button("Open log") { NSWorkspace.shared.open(model.store.logURL) }

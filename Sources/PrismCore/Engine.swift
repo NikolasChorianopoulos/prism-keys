@@ -1,4 +1,5 @@
 import AppKit
+import IOKit.hid
 import Foundation
 
 public struct EngineStatus: Equatable {
@@ -7,6 +8,10 @@ public struct EngineStatus: Equatable {
     public var firmware: String?
     public var keyTap = false
     public var notifications = "not started"
+    /// M1–M5 + Fn are being read (keyboard in driver mode).
+    public var mKeysActive = false
+    public var mKeysError: String?
+    public var gameMode = false
     public init() {}
 }
 
@@ -14,6 +19,8 @@ public struct EngineStatus: Equatable {
 /// software effects and alerts, runs macros, and watches notifications.
 public final class Engine {
     public var onStatus: ((EngineStatus) -> Void)?
+    /// Fn+F11 / Fn+F12 in driver mode: ask the app to change brightness by this many %.
+    public var onBrightnessStep: ((Int) -> Void)?
 
     private var kb: RazerKeyboard?
     private var profile: Profile
@@ -32,22 +39,33 @@ public final class Engine {
     private var status = EngineStatus() { didSet { if status != oldValue { let s = status; DispatchQueue.main.async { self.onStatus?(s) } } } }
     private var timer: DispatchSourceTimer?
     private var holdUntil: Date?
+    private var gameMode = false
+    private var driverActive = false              // queue
+    // main-thread state for key handling
+    private let special = RazerInputListener()
+    private var mainProfile: Profile
+    private var mainDriverActive = false
+    private var fnHeld = false
+    private var swallowed = Set<UInt16>()
 
     public init(profile: Profile, settings: Store.Settings) {
         self.profile = profile
         self.settings = settings
         animator = Animator(profile: profile)
-        Remapper.mKeyUsages = settings.mKeyUsages
+        mainProfile = profile
     }
 
     /// Call once from the main thread.
     public func start() {
         log("engine starting (profile '\(profile.name)')")
+        log("permissions: accessibility=\(AXIsProcessTrusted()) inputMonitoring=\(IOHIDCheckAccess(kIOHIDRequestTypeListenEvent).rawValue) fullDisk=\(NotificationWatcher.checkAccess() ?? "ok") path=\(Bundle.main.bundlePath)")
         queue.async { self.reconnect() }
 
-        tap.onKeyDown = { [weak self] vk in self?.handleKey(vk) ?? false }
+        tap.onKey = { [weak self] vk, down, rep in self?.handleKey(vk, down: down, isRepeat: rep) ?? false }
+        special.onKey = { [weak self] key, pressed in self?.handleSpecial(key, pressed) }
         startTapIfTrusted()
         rebuildSlots()
+        syncDriverMode(settings.driverMode)
 
         watcher.onNotification = { [weak self] n in
             guard let self else { return }
@@ -109,9 +127,23 @@ public final class Engine {
     public func trigger(_ kind: Animator.AlertKind) { animator.trigger(kind) }
     public func clearAlerts() { animator.clearAlerts() }
 
-    /// Temporarily stop rendering (used while the key tester owns the keyboard).
-    public func setDriverModeNow(_ on: Bool) {
-        queue.async { try? self.kb?.setDeviceMode(on ? 0x03 : 0x00) }
+    /// Call when the app quits: give the keyboard back its own Fn keys and plain remaps.
+    public func shutdown() {
+        special.stop()
+        queue.sync {
+            guard let kb else { return }
+            try? kb.setDeviceMode(0x00)
+            _ = Remapper.apply(profile, model: kb.model, includeMacros: false)
+        }
+    }
+
+    public func setGameMode(_ on: Bool) {
+        queue.async {
+            self.gameMode = on
+            self.status.gameMode = on
+            log("gaming mode \(on ? "on" : "off")")
+            self.applyRemaps(force: true)
+        }
     }
 
     /// Shows a fixed frame (test pattern) for a while, pausing the normal lighting.
@@ -157,21 +189,23 @@ public final class Engine {
         let oldSettings = settings
         profile = p
         settings = s
-        Remapper.mKeyUsages = s.mKeyUsages
         animator.setProfile(p)
-        DispatchQueue.main.async { self.rebuildSlots() }
-        guard let kb else { return }
-        if s.driverMode != oldSettings.driverMode { try? kb.setDeviceMode(s.driverMode ? 0x03 : 0x00) }
-        applyRemaps(force: s.mKeyUsages != oldSettings.mKeyUsages)
+        DispatchQueue.main.async {
+            self.mainProfile = p
+            self.rebuildSlots()
+            if s.driverMode != oldSettings.driverMode { self.syncDriverMode(s.driverMode) }
+        }
+        guard kb != nil else { return }
+        applyRemaps(force: false)
         applyLighting()
     }
 
     private func applyRemaps(force: Bool) {
         guard let kb else { return }
-        let key = "\(profile.remaps.sorted { $0.key < $1.key })|\(profile.macros.keys.sorted())|\(settings.mKeyUsages.sorted { $0.key < $1.key })"
+        let key = "\(profile.remaps.sorted { $0.key < $1.key })|\(profile.macros.keys.sorted())|\(gameMode)"
         if key == appliedRemapKey && !force { return }
         appliedRemapKey = key
-        for w in Remapper.apply(profile, model: kb.model) { log("remap: \(w)") }
+        for w in Remapper.apply(profile, model: kb.model, gameMode: gameMode) { log("remap: \(w)") }
     }
 
     private func reconnect() {
@@ -184,7 +218,7 @@ public final class Engine {
         let fw = try? k.firmwareVersion()
         log("connected: \(k.model.name) \(fw ?? "")")
         status.connected = true; status.model = k.model.name; status.firmware = fw
-        if settings.driverMode { try? k.setDeviceMode(0x03) }
+        try? k.setDeviceMode(driverActive ? 0x03 : 0x00)
         appliedRemapKey = ""
         applyRemaps(force: true)
         softwareActive = false
@@ -248,16 +282,87 @@ public final class Engine {
 
     private func rebuildSlots() {
         slotToMacro = [:]
-        for (name, slot) in Remapper.slotAssignments(profile) { slotToMacro[slot.vk] = name }
-        tap.swallowUp = Set(slotToMacro.keys)
+        for (name, slot) in Remapper.slotAssignments(mainProfile) { slotToMacro[slot.vk] = name }
     }
 
-    private func handleKey(_ vk: UInt16) -> Bool {
-        if let name = slotToMacro[vk], let m = profile.macros[name] {
-            macros.run(m, name: name)
+    /// Driver mode is only switched on once we can actually read Fn/M-keys; otherwise the
+    /// keyboard would lose its Fn shortcuts.
+    private func syncDriverMode(_ wanted: Bool) {
+        var failure: String?
+        if wanted && !special.isRunning {
+            do { try special.start() } catch { failure = "\(error)" }
+        } else if !wanted && special.isRunning {
+            special.stop()
+        }
+        let active = wanted && special.isRunning
+        mainDriverActive = active
+        fnHeld = false
+        queue.async {
+            self.driverActive = active
+            self.status.mKeysActive = active
+            self.status.mKeysError = failure
+            try? self.kb?.setDeviceMode(active ? 0x03 : 0x00)
+            log("M-keys \(active ? "enabled (driver mode)" : "disabled")\(failure.map { " — \($0)" } ?? "")")
+        }
+    }
+
+    private enum FnAction { case media(Int32), brightness(Int), gameMode, sleep, none }
+
+    /// Fn + key, as printed on the BlackWidow Chroma.
+    private static let fnLayer: [UInt16: FnAction] = [
+        0x7A: .media(MediaKeys.mute),      // F1
+        0x78: .media(MediaKeys.soundDown), // F2
+        0x63: .media(MediaKeys.soundUp),   // F3
+        0x60: .media(MediaKeys.previous),  // F5
+        0x61: .media(MediaKeys.play),      // F6
+        0x62: .media(MediaKeys.next),      // F7
+        0x65: .none,                       // F9  (on-the-fly macro recording: not supported)
+        0x6D: .gameMode,                   // F10
+        0x67: .brightness(-10),            // F11
+        0x6F: .brightness(10),             // F12
+        0x71: .sleep,                      // Pause
+    ]
+
+    private func handleKey(_ vk: UInt16, down: Bool, isRepeat: Bool) -> Bool {
+        // Fn layer (driver mode only: otherwise the keyboard does this itself)
+        if mainDriverActive {
+            if down, fnHeld, let action = Self.fnLayer[vk] {
+                swallowed.insert(vk)
+                switch action {
+                case .media(let k): if !isRepeat || k == MediaKeys.soundUp || k == MediaKeys.soundDown { MediaKeys.press(k) }
+                case .brightness(let d): onBrightnessStep?(d)
+                case .gameMode: if !isRepeat { setGameMode(!status.gameMode) }
+                case .sleep: if !isRepeat { _ = Remapper.run("/usr/bin/pmset", ["sleepnow"]) }
+                case .none: break
+                }
+                return true
+            }
+            if swallowed.contains(vk) {
+                if !down { swallowed.remove(vk) }
+                return true
+            }
+        }
+        // Macro slot keys
+        if let name = slotToMacro[vk] {
+            if down && !isRepeat, let m = mainProfile.macros[name] { macros.run(m, name: name) }
             return true
         }
-        animator.keyPressed(KeyLayout.key(vk: vk))
+        if down && !isRepeat { animator.keyPressed(KeyLayout.key(vk: vk)) }
         return false
+    }
+
+    private func handleSpecial(_ key: RazerInputListener.SpecialKey, _ pressed: Bool) {
+        switch key {
+        case .fn:
+            fnHeld = pressed
+        case .macro(let n):
+            guard pressed else { return }
+            let name = "m\(n)"
+            animator.keyPressed(KeyLayout.key(name))
+            if let m = mainProfile.macros[name] { macros.run(m, name: name) }
+            else if let target = mainProfile.remaps[name] { macros.tapCombo(target) }
+        case .other(let c):
+            if pressed { log(String(format: "unknown special key 0x%02X", c)) }
+        }
     }
 }

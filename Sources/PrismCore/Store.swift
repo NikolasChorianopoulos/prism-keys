@@ -11,12 +11,11 @@ public final class Store {
 
     public struct Settings: Codable, Equatable {
         public var activeProfile: String = "default"
-        /// Puts the keyboard in "driver mode" so the M1–M5 keys report to the Mac.
+        /// "Driver mode": the keyboard reports M1–M5 and Fn to Prism Keys, which then also
+        /// handles the Fn shortcuts (volume, media, brightness, gaming mode).
         public var driverMode: Bool = false
         /// Turn the keyboard lights off while the Mac's display sleeps.
         public var lightsOffWhenDisplaySleeps: Bool = true
-        /// What M1–M5 send (HID usages), learned with the M-key setup assistant.
-        public var mKeyUsages: [String: UInt32] = [:]
         /// Caps the LED brightness (%) to avoid flicker when the keyboard is on an underpowered USB hub.
         public var maxBrightness: Int = 100
         public init() {}
@@ -25,7 +24,6 @@ public final class Store {
             activeProfile = try c.decodeIfPresent(String.self, forKey: .activeProfile) ?? "default"
             driverMode = try c.decodeIfPresent(Bool.self, forKey: .driverMode) ?? false
             lightsOffWhenDisplaySleeps = try c.decodeIfPresent(Bool.self, forKey: .lightsOffWhenDisplaySleeps) ?? true
-            mKeyUsages = try c.decodeIfPresent([String: UInt32].self, forKey: .mKeyUsages) ?? [:]
             maxBrightness = try c.decodeIfPresent(Int.self, forKey: .maxBrightness) ?? 100
         }
     }

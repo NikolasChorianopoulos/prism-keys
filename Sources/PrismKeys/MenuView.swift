@@ -136,6 +136,18 @@ struct MenuView: View {
                 Toggle("", isOn: $model.profile.alerts.watchNotifications).labelsHidden()
             }
             HStack {
+                Label("M1–M5 macro keys", systemImage: "command.square")
+                Spacer()
+                Toggle("", isOn: $model.settings.driverMode).labelsHidden()
+            }
+            if model.status.mKeysActive {
+                HStack {
+                    Label("Gaming mode (Win/⌘ key off)", systemImage: "gamecontroller")
+                    Spacer()
+                    Toggle("", isOn: Binding(get: { model.status.gameMode }, set: { model.engine.setGameMode($0) })).labelsHidden()
+                }
+            }
+            HStack {
                 Label("Turn off when display sleeps", systemImage: "moon.zzz")
                 Spacer()
                 Toggle("", isOn: $model.settings.lightsOffWhenDisplaySleeps).labelsHidden()

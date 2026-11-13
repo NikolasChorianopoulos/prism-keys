@@ -70,6 +70,8 @@ public final class MacroRunner {
         return (v, flags)
     }
 
+    public func tapCombo(_ combo: String) { queue.async { self.pressCombo(combo) } }
+
     func pressCombo(_ combo: String) {
         guard let (vk, flags) = MacroRunner.parseCombo(combo) else { log("macro: can't parse '\(combo)'"); return }
         for down in [true, false] {
@@ -98,8 +100,8 @@ public final class MacroRunner {
 /// Global keyboard event tap: runs macros for slot keys and feeds keypresses to the animator.
 /// Requires the Accessibility permission.
 public final class KeyTap {
-    public var onKeyDown: ((UInt16) -> Bool)?   // return true to swallow the event
-    public var swallowUp: Set<UInt16> = []
+    /// (keycode, isDown, isRepeat) -> swallow the event?
+    public var onKey: ((UInt16, Bool, Bool) -> Bool)?
     fileprivate var tap: CFMachPort?
 
     public init() {}
@@ -133,14 +135,8 @@ private func keyTapCallback(proxy: CGEventTapProxy, type: CGEventType, event: CG
     }
     if event.getIntegerValueField(.eventSourceUserData) == MacroRunner.marker { return Unmanaged.passUnretained(event) }
     let vk = UInt16(event.getIntegerValueField(.keyboardEventKeycode))
-    if type == .keyDown {
-        let isRepeat = event.getIntegerValueField(.keyboardEventAutorepeat) != 0
-        var swallow = me.swallowUp.contains(vk)
-        if !isRepeat, me.onKeyDown?(vk) == true { swallow = true }
-        if swallow { return nil }
-    } else if type == .keyUp, me.swallowUp.contains(vk) {
-        return nil
-    }
+    let isRepeat = event.getIntegerValueField(.keyboardEventAutorepeat) != 0
+    if me.onKey?(vk, type == .keyDown, isRepeat) == true { return nil }
     return Unmanaged.passUnretained(event)
 }
 

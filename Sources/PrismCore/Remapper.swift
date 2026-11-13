@@ -18,33 +18,28 @@ public enum Remapper {
         Slot(name: "kp_comma", vk: 0x5F, usage: 0x85),
     ]
 
-    /// Source HID usage for a key, including M1–M5 once known (driver mode reports them as F13..F17... see `mKeyUsages`).
-    public static func sourceUsage(_ key: Key) -> UInt32? {
-        if let u = key.usage { return u }
-        return mKeyUsages[key.name]
-    }
+    /// Source HID usage for a key. M1–M5 have none: the engine reads them directly.
+    public static func sourceUsage(_ key: Key) -> UInt32? { key.usage }
 
-    /// What the M-keys send when the keyboard is in driver mode.
-    public static var mKeyUsages: [String: UInt32] = [:]
+    /// Keys macOS never sees (M1–M5): macros/remaps on them are handled by the engine.
+    public static func isDirect(_ name: String) -> Bool { KeyLayout.key(name)?.usage == nil }
 
     /// Macro key name -> slot, in a stable order.
     public static func slotAssignments(_ p: Profile) -> [String: Slot] {
         var out: [String: Slot] = [:]
-        for (i, name) in p.macros.keys.sorted().enumerated() where i < slots.count {
+        for (i, name) in p.macros.keys.filter({ !isDirect($0) }).sorted().enumerated() where i < slots.count {
             out[KeyLayout.key(name)?.name ?? name] = slots[i]
         }
         return out
     }
 
-    public static func mappings(_ p: Profile) -> (pairs: [(UInt32, UInt32)], warnings: [String]) {
+    public static func mappings(_ p: Profile, includeMacros: Bool = true, gameMode: Bool = false) -> (pairs: [(UInt32, UInt32)], warnings: [String]) {
         var pairs: [(UInt32, UInt32)] = []
         var warnings: [String] = []
-        let assigned = slotAssignments(p)
+        let assigned = includeMacros ? slotAssignments(p) : [:]
         if p.macros.count > slots.count { warnings.append("Only \(slots.count) macros can be active at once; extra ones are ignored.") }
-        for (from, to) in p.remaps.sorted(by: { $0.key < $1.key }) where assigned[from] == nil {
-            guard let fk = KeyLayout.key(from), let src = sourceUsage(fk) else {
-                warnings.append("Can't remap '\(from)': this key isn't visible to macOS."); continue
-            }
+        for (from, to) in p.remaps.sorted(by: { $0.key < $1.key }) where assigned[from] == nil && !isDirect(from) {
+            guard let fk = KeyLayout.key(from), let src = sourceUsage(fk) else { continue }
             let dst: UInt32
             if let tk = KeyLayout.key(to), let u = tk.usage { dst = u }
             else if let x = KeyLayout.extraTargets[to.lowercased()] { dst = x.usage }
@@ -62,8 +57,8 @@ public enum Remapper {
     }
 
     @discardableResult
-    public static func apply(_ p: Profile, model: DeviceModel) -> [String] {
-        let (pairs, warnings) = mappings(p)
+    public static func apply(_ p: Profile, model: DeviceModel, includeMacros: Bool = true, gameMode: Bool = false) -> [String] {
+        let (pairs, warnings) = mappings(p, includeMacros: includeMacros, gameMode: gameMode)
         let items = pairs.map {
             String(format: "{\"HIDKeyboardModifierMappingSrc\":0x7%08X,\"HIDKeyboardModifierMappingDst\":0x7%08X}", $0.0, $0.1)
         }
