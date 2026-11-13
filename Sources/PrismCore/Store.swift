@@ -37,7 +37,7 @@ public final class Store {
     }
 
     private init() {
-        if let custom = ProcessInfo.processInfo.environment["CHROMA_HOME"] {
+        if let custom = ProcessInfo.processInfo.environment["PRISMKEYS_HOME"] {
             baseDir = URL(fileURLWithPath: custom)
         } else {
             baseDir = FileManager.default.homeDirectoryForCurrentUser

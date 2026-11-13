@@ -8,6 +8,7 @@ struct AlertsTab: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
+                AlertClashWarning(showAlertsHint: false)
                 HStack {
                     Toggle("Light up the keyboard for notifications and incoming calls", isOn: $model.profile.alerts.watchNotifications)
                         .toggleStyle(.switch)

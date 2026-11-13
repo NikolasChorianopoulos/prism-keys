@@ -32,6 +32,7 @@ struct LightingTab: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
+                AlertClashWarning()
                 GroupBox {
                     VStack(alignment: .leading, spacing: 10) {
                         HStack {

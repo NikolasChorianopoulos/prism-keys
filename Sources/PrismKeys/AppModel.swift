@@ -328,3 +328,59 @@ enum TestPattern {
         return f
     }
 }
+
+// MARK: - Alert color clashes
+
+extension RGB {
+    /// True if two colors look about the same on the keyboard (perceptually weighted RGB distance).
+    func looksLike(_ o: RGB) -> Bool {
+        let dr = Double(r) - Double(o.r), dg = Double(g) - Double(o.g), db = Double(b) - Double(o.b)
+        return (2 * dr * dr + 4 * dg * dg + 3 * db * db).squareRoot() < 110
+    }
+}
+
+extension AppModel {
+    /// Warnings for alert colors that would be hard to see against the current lighting.
+    var alertColorClashes: [String] {
+        guard profile.alerts.watchNotifications else { return [] }
+        var out: [String] = []
+        let alerts: [(String, AlertStyle)] = [("Notification", profile.alerts.notification), ("Incoming call", profile.alerts.call)]
+        for (name, style) in alerts {
+            if profile.effect.type == .static, let c = profile.effect.color, c.looksLike(style.color) {
+                out.append("\(name) alerts use \(c == style.color ? "the same color as" : "almost the same color as") your Static color, so you may not notice them.")
+                continue
+            }
+            let keys = Set(((try? KeyLayout.resolve(style.keys)) ?? []).map(\.name))
+            let clashing = keys.filter { profile.keyColors[$0]?.looksLike(style.color) == true }
+            if !clashing.isEmpty {
+                let names = clashing.sorted().prefix(4).map { VisualLayout.label($0) }.joined(separator: ", ")
+                out.append("\(name) alerts use the same color as your custom color on \(names)\(clashing.count > 4 ? " and \(clashing.count - 4) more" : ""), so you may not notice them there.")
+            }
+        }
+        return out
+    }
+}
+
+struct AlertClashWarning: View {
+    @EnvironmentObject var model: AppModel
+    var showAlertsHint = true
+    var body: some View {
+        let clashes = model.alertColorClashes
+        if !clashes.isEmpty {
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.red)
+                VStack(alignment: .leading, spacing: 3) {
+                    ForEach(clashes, id: \.self) { Text($0) }
+                    if showAlertsHint {
+                        Text("Pick a different lighting color, or change the alert color in the Alerts tab.").foregroundStyle(.secondary)
+                    }
+                }
+                .font(.callout)
+                Spacer()
+            }
+            .padding(10)
+            .background(RoundedRectangle(cornerRadius: 8).fill(Color.red.opacity(0.15)))
+            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.red.opacity(0.6), lineWidth: 1))
+        }
+    }
+}
