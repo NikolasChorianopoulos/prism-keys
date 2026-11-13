@@ -113,6 +113,10 @@ struct AlertStyleEditor: View {
                     Stepper("\(Int(style.duration)) s", value: $style.duration, in: 1...120, step: 1).fixedSize()
                 }
                 HStack {
+                    Text("Color presets").foregroundStyle(.secondary)
+                    ColorDots(selection: $style.color, size: 14)
+                }
+                HStack {
                     Text("Keys")
                     TextField("e.g. f1-f12, logo, all", text: $keysText, onCommit: commitKeys)
                         .textFieldStyle(.roundedBorder).frame(width: 220)

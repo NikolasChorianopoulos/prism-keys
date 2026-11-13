@@ -73,6 +73,9 @@ struct LightingTab: View {
                         }
                         HStack {
                             ColorPicker("Color", selection: $paint.color, supportsOpacity: false).fixedSize()
+                            ColorDots(selection: $paint)
+                        }
+                        HStack {
                             Button("Paint selected") {
                                 for k in selection { model.profile.keyColors[k] = paint }
                             }.disabled(selection.isEmpty)
@@ -127,7 +130,11 @@ struct EffectOptions: View {
         VStack(alignment: .leading, spacing: 8) {
             switch t {
             case .static, .reactive, .ripple:
-                ColorPicker("Color", selection: optionalColor(\.color, default: RGB(0, 255, 0)), supportsOpacity: false).fixedSize()
+                HStack(spacing: 10) {
+                    ColorPicker("Color", selection: optionalColor(\.color, default: RGB(0, 255, 0)), supportsOpacity: false).fixedSize()
+                    ColorDots(selection: Binding(get: { model.profile.effect.color ?? RGB(0, 255, 0) },
+                                                 set: { model.profile.effect.color = $0 }))
+                }
             case .breathing, .starlight, .gradient:
                 ColorList(colors: Binding(get: { model.profile.effect.colors ?? [] }, set: { model.profile.effect.colors = $0 }),
                           max: t == .breathing ? 2 : 6,

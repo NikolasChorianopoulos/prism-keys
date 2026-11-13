@@ -6,8 +6,7 @@ struct MenuView: View {
     @EnvironmentObject var updater: UpdaterManager
     @Environment(\.openWindow) private var openWindow
 
-    private let quickColors: [RGB] = [RGB(255, 0, 0), RGB(255, 80, 0), RGB(255, 200, 0), RGB(0, 255, 0),
-                                      RGB(0, 255, 255), RGB(0, 80, 255), RGB(140, 0, 255), RGB(255, 40, 140), .white]
+    private var quickColors: [RGB] { KeyboardPalette.colors.map(\.rgb) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {

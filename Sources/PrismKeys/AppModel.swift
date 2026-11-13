@@ -458,3 +458,50 @@ struct UnsupportedKeyboardNote: View {
         }
     }
 }
+
+// MARK: - Keyboard color palette
+
+/// Colors chosen to look right on the keyboard's LEDs (pure channel values). Used by the menu's
+/// color dots, the dots in Settings, and the "Prism Keys" palette in the system color window.
+enum KeyboardPalette {
+    static let colors: [(name: String, rgb: RGB)] = [
+        ("Red", RGB(255, 0, 0)), ("Orange", RGB(255, 80, 0)), ("Yellow", RGB(255, 200, 0)),
+        ("Green", RGB(0, 255, 0)), ("Cyan", RGB(0, 255, 255)), ("Blue", RGB(0, 80, 255)),
+        ("Purple", RGB(140, 0, 255)), ("Pink", RGB(255, 40, 140)), ("White", RGB(255, 255, 255)),
+    ]
+
+    /// Adds a "Prism Keys" palette to the color window (Color Palettes tab).
+    static func install() {
+        let list = NSColorList(name: "Prism Keys")
+        for (i, c) in colors.enumerated() {
+            let ns = NSColor(srgbRed: CGFloat(c.rgb.r) / 255, green: CGFloat(c.rgb.g) / 255, blue: CGFloat(c.rgb.b) / 255, alpha: 1)
+            list.insertColor(ns, key: c.name, at: i)
+        }
+        let panel = NSColorPanel.shared
+        panel.attachColorList(list)
+        // Apple's 11-color palette uses screen-tuned values (its "Red" is 255,38,0), which look
+        // wrong next to the LED colors, so hide it in this app and open on the palettes tab.
+        for name in ["Apple"] {
+            if let l = NSColorList.availableColorLists.first(where: { $0.name == name }) { panel.detachColorList(l) }
+        }
+        panel.mode = .colorList
+    }
+}
+
+/// A row of one-click color dots (the same colors as the menu).
+struct ColorDots: View {
+    @Binding var selection: RGB
+    var size: CGFloat = 16
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(KeyboardPalette.colors, id: \.name) { c in
+                Button { selection = c.rgb } label: {
+                    Circle().fill(c.rgb.color).frame(width: size, height: size)
+                        .overlay(Circle().stroke(Color.primary.opacity(selection == c.rgb ? 0.9 : 0.15), lineWidth: selection == c.rgb ? 2 : 1))
+                }
+                .buttonStyle(.plain)
+                .help(c.name)
+            }
+        }
+    }
+}

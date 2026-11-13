@@ -33,6 +33,7 @@ struct PrismKeysApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        KeyboardPalette.install()
         _ = AppModel.shared
         Snapshot.runIfRequested()
     }
