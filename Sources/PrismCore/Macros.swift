@@ -101,7 +101,8 @@ public final class MacroRunner {
 /// Requires the Accessibility permission.
 public final class KeyTap {
     /// (keycode, isDown, isRepeat) -> swallow the event?
-    public var onKey: ((UInt16, Bool, Bool) -> Bool)?
+    /// (keycode, isDown, isRepeat, modifier flags) -> swallow the event?
+    public var onKey: ((UInt16, Bool, Bool, CGEventFlags) -> Bool)?
     fileprivate var tap: CFMachPort?
 
     public init() {}
@@ -136,7 +137,7 @@ private func keyTapCallback(proxy: CGEventTapProxy, type: CGEventType, event: CG
     if event.getIntegerValueField(.eventSourceUserData) == MacroRunner.marker { return Unmanaged.passUnretained(event) }
     let vk = UInt16(event.getIntegerValueField(.keyboardEventKeycode))
     let isRepeat = event.getIntegerValueField(.keyboardEventAutorepeat) != 0
-    if me.onKey?(vk, type == .keyDown, isRepeat) == true { return nil }
+    if me.onKey?(vk, type == .keyDown, isRepeat, event.flags) == true { return nil }
     return Unmanaged.passUnretained(event)
 }
 

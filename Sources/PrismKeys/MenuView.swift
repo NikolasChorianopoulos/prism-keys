@@ -12,6 +12,7 @@ struct MenuView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             header
+            if let r = model.status.recording { RecordingBanner(state: r) }
             if let banner = permissionBanner { banner }
             Divider()
             profileRow
@@ -234,5 +235,24 @@ struct Banner: View {
         }
         .padding(8)
         .background(RoundedRectangle(cornerRadius: 8).fill(Color.orange.opacity(0.12)))
+    }
+}
+
+struct RecordingBanner: View {
+    let state: String
+    @Local private var pulse = false
+    var body: some View {
+        HStack(spacing: 8) {
+            Circle().fill(Color.red).frame(width: 9, height: 9).opacity(pulse ? 0.3 : 1)
+                .onAppear { withAnimation(.easeInOut(duration: 0.6).repeatForever()) { pulse = true } }
+            VStack(alignment: .leading, spacing: 1) {
+                Text(state == "recording" ? "Recording macro…" : "Press the key that should play it").font(.callout.bold())
+                Text(state == "recording" ? "Type what you want recorded, then press Fn+F9." : "Any key or M1–M5. Esc cancels.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer()
+        }
+        .padding(8)
+        .background(RoundedRectangle(cornerRadius: 8).fill(Color.red.opacity(0.12)))
     }
 }

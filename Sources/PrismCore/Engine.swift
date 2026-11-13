@@ -12,6 +12,8 @@ public struct EngineStatus: Equatable {
     public var mKeysActive = false
     public var mKeysError: String?
     public var gameMode = false
+    /// On-the-fly macro recording (Fn+F9): nil, "recording" or "choosing"
+    public var recording: String?
     public init() {}
 }
 
@@ -21,6 +23,8 @@ public final class Engine {
     public var onStatus: ((EngineStatus) -> Void)?
     /// Fn+F11 / Fn+F12 in driver mode: ask the app to change brightness by this many %.
     public var onBrightnessStep: ((Int) -> Void)?
+    /// A macro recorded with Fn+F9 was assigned to a key.
+    public var onMacroRecorded: ((String, Macro) -> Void)?
 
     private var kb: RazerKeyboard?
     private var profile: Profile
@@ -51,6 +55,14 @@ public final class Engine {
     private var mainDriverActive = false
     private var fnHeld = false
     private var swallowed = Set<UInt16>()
+    // on-the-fly recording (main thread)
+    private enum RecState { case idle, recording, choosing }
+    private var rec = RecState.idle
+    private var recActions: [MacroAction] = []
+    private var recGroup: [String] = []
+    private var recLast: Date?
+    private var recTimeout: DispatchWorkItem?
+    private var blinkTimer: DispatchSourceTimer?   // queue
 
     public init(profile: Profile, settings: Store.Settings) {
         self.profile = profile
@@ -65,7 +77,7 @@ public final class Engine {
         log("permissions: accessibility=\(AXIsProcessTrusted()) inputMonitoring=\(IOHIDCheckAccess(kIOHIDRequestTypeListenEvent).rawValue) fullDisk=\(NotificationWatcher.checkAccess() ?? "ok") path=\(Bundle.main.bundlePath)")
         queue.async { self.reconnect() }
 
-        tap.onKey = { [weak self] vk, down, rep in self?.handleKey(vk, down: down, isRepeat: rep) ?? false }
+        tap.onKey = { [weak self] vk, down, rep, flags in self?.handleKey(vk, down: down, isRepeat: rep, flags: flags) ?? false }
         special.onKey = { [weak self] key, pressed in self?.handleSpecial(key, pressed) }
         startTapIfTrusted()
         rebuildSlots()
@@ -337,7 +349,7 @@ public final class Engine {
         }
     }
 
-    private enum FnAction { case media(Int32), brightness(Int), gameMode, sleep, none }
+    private enum FnAction { case media(Int32), brightness(Int), gameMode, sleep, record }
 
     /// Fn + key, as printed on the BlackWidow Chroma.
     private static let fnLayer: [UInt16: FnAction] = [
@@ -347,14 +359,14 @@ public final class Engine {
         0x60: .media(MediaKeys.previous),  // F5
         0x61: .media(MediaKeys.play),      // F6
         0x62: .media(MediaKeys.next),      // F7
-        0x65: .none,                       // F9  (on-the-fly macro recording: not supported)
+        0x65: .record,                     // F9  on-the-fly macro recording
         0x6D: .gameMode,                   // F10
         0x67: .brightness(-10),            // F11
         0x6F: .brightness(10),             // F12
         0x71: .sleep,                      // Pause
     ]
 
-    private func handleKey(_ vk: UInt16, down: Bool, isRepeat: Bool) -> Bool {
+    private func handleKey(_ vk: UInt16, down: Bool, isRepeat: Bool, flags: CGEventFlags) -> Bool {
         // Fn layer (driver mode only: otherwise the keyboard does this itself)
         if mainDriverActive {
             if down, fnHeld, let action = Self.fnLayer[vk] {
@@ -364,15 +376,22 @@ public final class Engine {
                 case .brightness(let d): onBrightnessStep?(d)
                 case .gameMode: if !isRepeat { setGameMode(!status.gameMode) }
                 case .sleep: if !isRepeat { _ = Remapper.run("/usr/bin/pmset", ["sleepnow"]) }
-                case .none: break
+                case .record: if !isRepeat { toggleRecording() }
                 }
                 return true
             }
-            if swallowed.contains(vk) {
-                if !down { swallowed.remove(vk) }
-                return true
-            }
         }
+        if swallowed.contains(vk) {
+            if !down { swallowed.remove(vk) }
+            return true
+        }
+        // Fn+F9 finished: the next key press receives the recorded macro (Esc cancels).
+        if rec == .choosing, down, !isRepeat, let k = KeyLayout.key(vk: vk) {
+            swallowed.insert(vk)
+            if k.name == "esc" { finishRecording(assignTo: nil) } else { finishRecording(assignTo: k.name) }
+            return true
+        }
+        if rec == .recording, down, !isRepeat { recordKey(vk, flags) }
         // Macro slot keys
         if let name = slotToMacro[vk] {
             if down && !isRepeat, let m = mainProfile.macros[name] { macros.run(m, name: name) }
@@ -389,6 +408,8 @@ public final class Engine {
         case .macro(let n):
             guard pressed else { return }
             let name = "m\(n)"
+            if rec == .choosing { finishRecording(assignTo: name); return }
+            if rec == .recording { return }
             animator.keyPressed(KeyLayout.key(name))
             if let m = mainProfile.macros[name] { macros.run(m, name: name) }
             else if let target = mainProfile.remaps[name] { macros.tapCombo(target) }
@@ -396,4 +417,103 @@ public final class Engine {
             if pressed { log(String(format: "unknown special key 0x%02X", c)) }
         }
     }
+
+    // MARK: on-the-fly macro recording (main thread)
+
+    private func toggleRecording() {
+        switch rec {
+        case .idle: startRecording()
+        case .recording: stopRecording()
+        case .choosing: finishRecording(assignTo: nil)
+        }
+    }
+
+    private func startRecording() {
+        rec = .recording
+        recActions = []; recGroup = []; recLast = nil
+        setRecordingStatus("recording")
+        queue.async { try? self.kb?.setLED(RazerKeyboard.macroLED, on: true) }
+        log("macro recording started")
+        scheduleRecordingTimeout(120)
+    }
+
+    private func recordKey(_ vk: UInt16, _ flags: CGEventFlags) {
+        guard let k = KeyLayout.key(vk: vk) else { return }
+        var parts: [String] = []
+        if flags.contains(.maskCommand) { parts.append("cmd") }
+        if flags.contains(.maskControl) { parts.append("ctrl") }
+        if flags.contains(.maskAlternate) { parts.append("alt") }
+        if flags.contains(.maskShift) { parts.append("shift") }
+        parts.append(k.name)
+        let now = Date()
+        if let last = recLast {
+            let gap = now.timeIntervalSince(last)
+            if gap > 0.3 {
+                flushGroup()
+                recActions.append(MacroAction(type: .delay, value: "\(min(5000, Int((gap * 100).rounded()) * 10))"))
+            }
+        }
+        recGroup.append(parts.joined(separator: "+"))
+        recLast = now
+    }
+
+    private func flushGroup() {
+        guard !recGroup.isEmpty else { return }
+        recActions.append(MacroAction(type: .keys, value: recGroup.joined(separator: " ")))
+        recGroup = []
+    }
+
+    private func stopRecording() {
+        flushGroup()
+        guard !recActions.isEmpty else { finishRecording(assignTo: nil); return }
+        rec = .choosing
+        setRecordingStatus("choosing")
+        log("macro recorded (\(recActions.count) steps); waiting for a key")
+        queue.async { self.startBlink() }
+        scheduleRecordingTimeout(20)
+    }
+
+    private func finishRecording(assignTo key: String?) {
+        if let key, !recActions.isEmpty {
+            let macro = Macro(actions: recActions)
+            log("recorded macro saved to \(key)")
+            onMacroRecorded?(key, macro)
+        } else {
+            log("macro recording cancelled")
+        }
+        rec = .idle
+        recActions = []; recGroup = []; recLast = nil
+        recTimeout?.cancel(); recTimeout = nil
+        setRecordingStatus(nil)
+        queue.async {
+            self.blinkTimer?.cancel(); self.blinkTimer = nil
+            try? self.kb?.setLED(RazerKeyboard.macroLED, on: false)
+        }
+    }
+
+    private func scheduleRecordingTimeout(_ seconds: Double) {
+        recTimeout?.cancel()
+        let w = DispatchWorkItem { [weak self] in self?.finishRecording(assignTo: nil) }
+        recTimeout = w
+        DispatchQueue.main.asyncAfter(deadline: .now() + seconds, execute: w)
+    }
+
+    private func setRecordingStatus(_ s: String?) { queue.async { self.status.recording = s } }
+
+    /// Blink the M indicator while waiting for a key (on queue).
+    private func startBlink() {
+        blinkTimer?.cancel()
+        var on = true
+        let t = DispatchSource.makeTimerSource(queue: queue)
+        t.schedule(deadline: .now(), repeating: 0.35)
+        t.setEventHandler { [weak self] in
+            on.toggle()
+            try? self?.kb?.setLED(RazerKeyboard.macroLED, on: on)
+        }
+        t.resume()
+        blinkTimer = t
+    }
+
+    /// Start/stop recording from the app (works without Fn+F9).
+    public func toggleRecordingFromApp() { DispatchQueue.main.async { self.toggleRecording() } }
 }

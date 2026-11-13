@@ -32,6 +32,10 @@ final class AppModel: ObservableObject {
         if profileNames.isEmpty { try? store.save(p); profileNames = [p.name] }
 
         engine.onStatus = { [weak self] st in self?.status = st }
+        engine.onMacroRecorded = { [weak self] key, macro in
+            self?.profile.remaps[key] = nil
+            self?.profile.macros[key] = macro
+        }
         engine.onBrightnessStep = { [weak self] d in
             guard let self else { return }
             self.profile.brightness = max(0, min(100, self.profile.brightness + d))

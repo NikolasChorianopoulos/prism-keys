@@ -207,7 +207,7 @@ struct MKeysBox: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 3) {
                         Text("Enable M1–M5 keys").font(.headline)
-                        Text("Switches the keyboard to driver mode so the M-keys reach Prism Keys. Prism Keys then also handles the Fn shortcuts while it's running: F1–F3 volume, F5–F7 media, F10 gaming mode, F11/F12 brightness, Pause sleep. Quitting Prism Keys gives them back to the keyboard.")
+                        Text("Switches the keyboard to driver mode so the M-keys reach Prism Keys. Prism Keys then also handles the Fn shortcuts while it's running: F1–F3 volume, F5–F7 media, F9 record a macro, F10 gaming mode, F11/F12 brightness, Pause sleep. Quitting Prism Keys gives them back to the keyboard.")
                             .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                     }
                     Spacer()
@@ -219,6 +219,8 @@ struct MKeysBox: View {
                     }
                 } else if model.status.mKeysActive {
                     Label("Active. Press an M-key to run its macro.", systemImage: "checkmark.circle.fill").foregroundStyle(.green).font(.callout)
+                    Text("Quick recording: press Fn+F9 (the M light turns on), type your keys, press Fn+F9 again, then press the key that should play it back (Esc cancels).")
+                        .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 }
             }.padding(6)
         }
