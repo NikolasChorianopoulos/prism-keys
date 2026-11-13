@@ -20,6 +20,7 @@ let package = Package(
             dependencies: ["CRazerUSB"],
             linkerSettings: [.linkedLibrary("sqlite3"), .linkedFramework("ApplicationServices"), .linkedFramework("AppKit")]
         ),
+        .testTarget(name: "PrismCoreTests", dependencies: ["PrismCore"]),
         .executableTarget(
             name: "PrismKeys",
             dependencies: ["PrismCore", .product(name: "Sparkle", package: "Sparkle")],

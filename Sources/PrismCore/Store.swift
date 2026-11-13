@@ -49,6 +49,12 @@ public final class Store {
         public var profiles: [Profile]
     }
 
+    /// Storage in a specific folder (used by tests).
+    public init(baseDir: URL) {
+        self.baseDir = baseDir
+        try? FileManager.default.createDirectory(at: profilesDir, withIntermediateDirectories: true)
+    }
+
     private init() {
         if let custom = ProcessInfo.processInfo.environment["PRISMKEYS_HOME"] {
             baseDir = URL(fileURLWithPath: custom)
