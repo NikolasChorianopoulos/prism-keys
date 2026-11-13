@@ -5,7 +5,7 @@
 #  3. writes the public key into release.config
 set -euo pipefail
 cd "$(dirname "$0")/.."
-VER=$(grep -A3 '"sparkle"' Package.resolved | grep '"version"' | sed -E 's/.*"([0-9.]+)".*/\1/')
+VER=$(python3 -c 'import json;print([p["state"]["version"] for p in json.load(open("Package.resolved"))["pins"] if p["identity"]=="sparkle"][0])')
 TOOLS=.build/sparkle-tools
 if [ ! -x "$TOOLS/bin/sign_update" ]; then
   echo "▸ Downloading Sparkle $VER tools from github.com/sparkle-project"
