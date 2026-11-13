@@ -4,8 +4,8 @@ import Foundation
 
 /// Runs macro actions by synthesizing keyboard events / launching things.
 public final class MacroRunner {
-    public static let marker: Int64 = 0x43_48_52_4D // "CHRM": tags our own synthetic events
-    private let queue = DispatchQueue(label: "chroma.macros")
+    public static let marker: Int64 = 0x50_52_53_4D // "PRSM": tags our own synthetic events
+    private let queue = DispatchQueue(label: "prismkeys.macros")
     private let source = CGEventSource(stateID: .hidSystemState)
 
     public init() {}
@@ -144,8 +144,16 @@ private func keyTapCallback(proxy: CGEventTapProxy, type: CGEventType, event: CG
     return Unmanaged.passUnretained(event)
 }
 
+private let logLock = NSLock()
 public func log(_ s: String) {
     let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd HH:mm:ss"
-    print("[\(f.string(from: Date()))] \(s)")
-    fflush(stdout)
+    let line = "[\(f.string(from: Date()))] \(s)\n"
+    print(line, terminator: "")
+    logLock.lock(); defer { logLock.unlock() }
+    let url = Store.shared.logURL
+    if let h = try? FileHandle(forWritingTo: url) {
+        h.seekToEndOfFile(); h.write(line.data(using: .utf8)!); try? h.close()
+    } else {
+        try? line.data(using: .utf8)!.write(to: url)
+    }
 }

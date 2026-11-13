@@ -9,7 +9,7 @@ public final class NotificationWatcher {
     public var onNotification: ((Note) -> Void)?
     private var lastID: Int64 = -1
     private var timer: DispatchSourceTimer?
-    private let queue = DispatchQueue(label: "chroma.notifications")
+    private let queue = DispatchQueue(label: "prismkeys.notifications")
     public private(set) var status = "not started"
     private var warned = false
 
@@ -52,13 +52,13 @@ public final class NotificationWatcher {
         var db: OpaquePointer?
         defer { sqlite3_close(db) }
         guard sqlite3_open_v2(path, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else {
-            setError("can't open database — grant Full Disk Access to the chroma binary"); return
+            setError("can't open database — grant Full Disk Access to Prism Keys"); return
         }
         sqlite3_busy_timeout(db, 200)
         if lastID < 0 {
             var st: OpaquePointer?
             guard sqlite3_prepare_v2(db, "SELECT IFNULL(MAX(rec_id),0) FROM record", -1, &st, nil) == SQLITE_OK else {
-                setError("can't read database — grant Full Disk Access to the chroma binary"); return
+                setError("can't read database — grant Full Disk Access to Prism Keys"); return
             }
             if sqlite3_step(st) == SQLITE_ROW { lastID = sqlite3_column_int64(st, 0) }
             sqlite3_finalize(st)

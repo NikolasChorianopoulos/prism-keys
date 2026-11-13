@@ -53,7 +53,7 @@ public enum Remapper {
         }
         for (name, slot) in assigned {
             guard let k = KeyLayout.key(name), let src = sourceUsage(k) else {
-                warnings.append("Macro on '\(name)' can't fire yet: the keyboard doesn't report this key to macOS (see `chroma keytest`).")
+                warnings.append("Macro on '\(name)' can't fire yet: the keyboard doesn't report this key to macOS (use the M-key setup in Settings → Keys & Macros).")
                 continue
             }
             pairs.append((src, slot.usage))

@@ -150,7 +150,7 @@ public enum KeyLayout {
                     continue
                 }
             }
-            throw ChromaError.invalid("Unknown key or group '\(raw)'. Run `chroma keys` to see names.")
+            throw ChromaError.invalid("Unknown key or group '\(raw)'. ")
         }
         return out
     }

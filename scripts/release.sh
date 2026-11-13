@@ -1,0 +1,50 @@
+#!/bin/bash
+# Builds a release and publishes it so installed copies auto-update.
+# Usage: scripts/release.sh 1.0.1 ["What's new text"]
+set -euo pipefail
+cd "$(dirname "$0")/.."
+source release.config
+NEW="${1:?Usage: scripts/release.sh <version> [notes]}"
+NOTES="${2:-Bug fixes and improvements.}"
+[ -n "$GITHUB_REPO" ] || { echo "Set GITHUB_REPO in release.config first."; exit 1; }
+[ -n "$SPARKLE_PUBLIC_KEY" ] || { echo "Run scripts/setup-updates.sh first."; exit 1; }
+[ -z "$(git status --porcelain)" ] || { echo "Commit your changes first."; exit 1; }
+
+echo "$NEW" > VERSION
+git commit -qm "Release $NEW" VERSION
+scripts/build-app.sh
+scripts/make-dmg.sh
+DMG="dist/PrismKeys-$NEW.dmg"
+BUILD=$(git rev-list --count HEAD)
+
+SIG=$(.build/sparkle-tools/bin/sign_update "$DMG")   # → sparkle:edSignature="…" length="…"
+URL="https://github.com/$GITHUB_REPO/releases/download/v$NEW/PrismKeys-$NEW.dmg"
+cat > dist/appcast.xml <<XML
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+  <channel>
+    <title>Prism Keys</title>
+    <item>
+      <title>Version $NEW</title>
+      <pubDate>$(LC_ALL=C date -u "+%a, %d %b %Y %H:%M:%S +0000")</pubDate>
+      <sparkle:version>$BUILD</sparkle:version>
+      <sparkle:shortVersionString>$NEW</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[<p>$NOTES</p>]]></description>
+      <enclosure url="$URL" type="application/octet-stream" $SIG />
+    </item>
+  </channel>
+</rss>
+XML
+git tag "v$NEW"
+echo "✓ Built $DMG and dist/appcast.xml"
+if command -v gh >/dev/null; then
+  read -r -p "Publish v$NEW to GitHub now (push tag + create release)? [y/N] " ok
+  if [ "$ok" = "y" ]; then
+    git push && git push origin "v$NEW"
+    gh release create "v$NEW" "$DMG" dist/appcast.xml --repo "$GITHUB_REPO" --title "Prism Keys $NEW" --notes "$NOTES"
+    echo "✓ Released. Installed copies will see the update within a day (or via Check for Updates)."
+  fi
+else
+  echo "Upload $DMG and dist/appcast.xml to a GitHub release named v$NEW."
+fi

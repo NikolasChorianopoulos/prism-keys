@@ -1,32 +1,34 @@
 import Foundation
 
-/// Persists profiles under ~/Library/Application Support/RazerChroma
+/// Persists profiles under ~/Library/Application Support/Prism Keys
 public final class Store {
     public static let shared = Store()
 
     public let baseDir: URL
     public var profilesDir: URL { baseDir.appendingPathComponent("profiles") }
     public var settingsURL: URL { baseDir.appendingPathComponent("settings.json") }
-    public var socketPath: String { baseDir.appendingPathComponent("service.sock").path }
-    public var logURL: URL { baseDir.appendingPathComponent("service.log") }
+    public var logURL: URL { baseDir.appendingPathComponent("prismkeys.log") }
 
-    public struct Settings: Codable {
+    public struct Settings: Codable, Equatable {
         public var activeProfile: String = "default"
         /// Puts the keyboard in "driver mode" so the M1–M5 keys report to the Mac.
         public var driverMode: Bool = false
         /// Turn the keyboard lights off while the Mac's display sleeps.
         public var lightsOffWhenDisplaySleeps: Bool = true
+        /// What M1–M5 send (HID usages), learned with the M-key setup assistant.
+        public var mKeyUsages: [String: UInt32] = [:]
         public init() {}
         public init(from decoder: Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
             activeProfile = try c.decodeIfPresent(String.self, forKey: .activeProfile) ?? "default"
             driverMode = try c.decodeIfPresent(Bool.self, forKey: .driverMode) ?? false
             lightsOffWhenDisplaySleeps = try c.decodeIfPresent(Bool.self, forKey: .lightsOffWhenDisplaySleeps) ?? true
+            mKeyUsages = try c.decodeIfPresent([String: UInt32].self, forKey: .mKeyUsages) ?? [:]
         }
     }
 
     public struct ExportBundle: Codable {
-        public var format = "razer-chroma-cli"
+        public var format = "prism-keys"
         public var version = 1
         public var exportedAt = ISO8601DateFormatter().string(from: Date())
         public var activeProfile: String?
@@ -38,7 +40,7 @@ public final class Store {
             baseDir = URL(fileURLWithPath: custom)
         } else {
             baseDir = FileManager.default.homeDirectoryForCurrentUser
-                .appendingPathComponent("Library/Application Support/RazerChroma")
+                .appendingPathComponent("Library/Application Support/Prism Keys")
         }
         try? FileManager.default.createDirectory(at: profilesDir, withIntermediateDirectories: true)
     }
@@ -80,7 +82,7 @@ public final class Store {
         let url = profilesDir.appendingPathComponent(Store.fileName(name))
         guard let d = try? Data(contentsOf: url) else {
             if name == "default" { let p = Profile(name: "default"); try save(p); return p }
-            throw ChromaError.invalid("Profile '\(name)' not found. Run `chroma profile list`.")
+            throw ChromaError.invalid("Profile '\(name)' not found.")
         }
         do { return try JSONDecoder().decode(Profile.self, from: d) }
         catch { throw ChromaError.io("Profile '\(name)' is corrupt: \(error)") }
@@ -124,7 +126,7 @@ public final class Store {
         } else if let p = try? JSONDecoder().decode(Profile.self, from: data) {
             profiles = [p]; active = p.name
         } else {
-            throw ChromaError.invalid("\(url.path) is not a chroma export file.")
+            throw ChromaError.invalid("\(url.lastPathComponent) is not a Prism Keys profile file.")
         }
         var names: [String] = []
         var renamed: [String: String] = [:]
