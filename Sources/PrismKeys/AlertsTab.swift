@@ -4,6 +4,7 @@ import SwiftUI
 struct AlertsTab: View {
     @EnvironmentObject var model: AppModel
     @Local private var fda = Permissions.fullDiskAccess
+    @Local private var confirmReset = false
 
     var body: some View {
         ScrollView {
@@ -34,9 +35,11 @@ struct AlertsTab: View {
                         .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 }
                 AlertStyleEditor(title: "Notifications", symbol: "bell.fill",
-                                 style: $model.profile.alerts.notification) { model.engine.trigger(.notify) }
+                                 style: $model.profile.alerts.notification,
+                                 defaults: AlertSettings().notification) { model.engine.trigger(.notify) }
                 AlertStyleEditor(title: "Incoming calls", symbol: "phone.fill",
-                                 style: $model.profile.alerts.call) { model.engine.trigger(.call) }
+                                 style: $model.profile.alerts.call,
+                                 defaults: AlertSettings().call) { model.engine.trigger(.call) }
                 GroupBox("Rules") {
                     VStack(alignment: .leading, spacing: 8) {
                         ListField(label: "Apps whose notifications are calls", hint: "bundle IDs, e.g. com.apple.facetime",
@@ -53,9 +56,23 @@ struct AlertsTab: View {
                     }
                     .padding(6)
                 }
+                HStack {
+                    Spacer()
+                    Button("Restore Default Alert Settings…") { confirmReset = true }
+                }
             }
         }
         .onAppear { fda = Permissions.fullDiskAccess }
+        .confirmationDialog("Restore the default alert settings?", isPresented: $confirmReset) {
+            Button("Restore Defaults", role: .destructive) {
+                let on = model.profile.alerts.watchNotifications
+                model.profile.alerts = AlertSettings()
+                model.profile.alerts.watchNotifications = on
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Colors, patterns, keys, reminders, dimming and the rules for this profile go back to how they were originally. Your other settings aren't affected.")
+        }
     }
 }
 
@@ -63,6 +80,7 @@ struct AlertStyleEditor: View {
     let title: String
     let symbol: String
     @Binding var style: AlertStyle
+    let defaults: AlertStyle
     let test: () -> Void
     @Local private var keysText = ""
     @Local private var keysError = false
@@ -73,6 +91,9 @@ struct AlertStyleEditor: View {
                 HStack {
                     Label(title, systemImage: symbol).font(.headline)
                     Spacer()
+                    Button("Reset") { style = defaults }
+                        .disabled(style == defaults)
+                        .help("Restore this alert's default colors, pattern, keys and reminder")
                     Button("Test", action: test)
                 }
                 HStack {
@@ -111,6 +132,7 @@ struct AlertStyleEditor: View {
             .padding(6)
         }
         .onAppear { keysText = style.keys }
+        .onChange(of: style.keys) { _, new in keysText = new; keysError = false }
     }
 
     private func commitKeys() {
@@ -131,6 +153,7 @@ struct ListField: View {
                 .textFieldStyle(.roundedBorder)
                 .onAppear { text = values.joined(separator: ", ") }
                 .onChange(of: text) { _, new in values = parse(new) }
+                .onChange(of: values) { _, new in if parse(text) != new { text = new.joined(separator: ", ") } }
         }
     }
 

@@ -92,7 +92,7 @@ public struct AlertSettings: Codable, Equatable {
     public var notification = AlertStyle(keys: "f1-f12", color: RGB(0, 180, 255), secondColor: nil,
                                          pattern: .sweep, duration: 4, persist: true, persistKeys: "logo")
     public var call = AlertStyle(keys: "all", color: RGB(0, 255, 60), secondColor: RGB(0, 40, 255),
-                                 pattern: .pulse, duration: 25, persist: false, persistKeys: "logo")
+                                 pattern: .pulse, duration: 25, persist: true, persistKeys: "logo")
     /// Apps whose notifications always count as calls
     public var callApps: [String] = ["com.apple.facetime", "com.apple.mobilephone", "com.apple.telephonyutilities", "com.apple.inCallService"]
     /// Notification text that marks a call (case-insensitive), from any app (WhatsApp, Teams, Zoom, ...)
