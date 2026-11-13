@@ -141,11 +141,21 @@ struct MenuView: View {
                 Spacer()
                 Toggle("", isOn: $model.settings.driverMode).labelsHidden()
             }
-            if model.status.mKeysActive {
+            VStack(alignment: .leading, spacing: 2) {
                 HStack {
                     Label("Gaming mode (Win/⌘ key off)", systemImage: "gamecontroller")
                     Spacer()
-                    Toggle("", isOn: Binding(get: { model.status.gameMode }, set: { model.engine.setGameMode($0) })).labelsHidden()
+                    Toggle("", isOn: Binding(get: { model.status.mKeysActive && model.status.gameMode },
+                                             set: { model.engine.setGameMode($0) }))
+                        .labelsHidden()
+                        .disabled(!model.status.mKeysActive)
+                }
+                .foregroundStyle(model.status.mKeysActive ? Color.primary : Color.secondary)
+                if !model.status.mKeysActive {
+                    // In normal mode the keyboard runs Gaming mode itself and doesn't report it.
+                    Text("Handled by the keyboard: press Fn+F10")
+                        .font(.caption).foregroundStyle(.secondary)
+                        .padding(.leading, 26)
                 }
             }
             HStack {
