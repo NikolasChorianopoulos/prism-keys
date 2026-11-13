@@ -101,6 +101,8 @@ public struct AlertSettings: Codable, Equatable {
     public var onlyApps: [String] = []
     /// Press any key to stop an alert
     public var dismissOnKeypress: Bool = true
+    /// How much the rest of the keyboard dims while an alert plays (0 = not at all, 100 = off).
+    public var dimBackground: Int = 85
 
     public init() {}
 
@@ -116,6 +118,7 @@ public struct AlertSettings: Codable, Equatable {
         ignoreApps = try c.decodeIfPresent([String].self, forKey: .ignoreApps) ?? d.ignoreApps
         onlyApps = try c.decodeIfPresent([String].self, forKey: .onlyApps) ?? d.onlyApps
         dismissOnKeypress = try c.decodeIfPresent(Bool.self, forKey: .dismissOnKeypress) ?? d.dismissOnKeypress
+        dimBackground = try c.decodeIfPresent(Int.self, forKey: .dimBackground) ?? d.dimBackground
     }
 }
 

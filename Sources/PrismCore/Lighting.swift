@@ -230,7 +230,8 @@ public final class Animator {
         let keys = a.keys.sorted { ($0.col, $0.row) < ($1.col, $1.row) }
         // Fade the rest of the keyboard so the alert stands out over any effect.
         if keys.count < KeyLayout.keys.count {
-            let fade = 1 - 0.85 * min(1, age / 0.25)
+            let dim = Double(max(0, min(100, profile.alerts.dimBackground))) / 100
+            let fade = 1 - dim * min(1, age / 0.25)
             for i in f.pixels.indices { f.pixels[i] = f.pixels[i].scaled(fade) }
         }
         switch s.pattern {

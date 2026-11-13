@@ -22,6 +22,17 @@ struct AlertsTab: View {
                          + (fda ? "" : " Optional: Full Disk Access lets Prism Keys catch some notifications from macOS's notification list as well."))
                         .font(.caption).foregroundStyle(.secondary)
                 }
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text("Dim the rest of the keyboard")
+                        Slider(value: Binding(get: { Double(model.profile.alerts.dimBackground) },
+                                              set: { model.profile.alerts.dimBackground = Int($0) }), in: 0...100, step: 5)
+                            .frame(width: 200)
+                        Text("\(model.profile.alerts.dimBackground)%").monospacedDigit()
+                    }
+                    Text("While an alert plays, the other keys fade so it stands out. 0% doesn't dim at all; 100% turns the other keys off. Your lighting comes back when the alert ends. Alerts that use the whole keyboard aren't affected.")
+                        .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                }
                 AlertStyleEditor(title: "Notifications", symbol: "bell.fill",
                                  style: $model.profile.alerts.notification) { model.engine.trigger(.notify) }
                 AlertStyleEditor(title: "Incoming calls", symbol: "phone.fill",
