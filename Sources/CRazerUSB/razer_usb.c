@@ -4,6 +4,8 @@
 #include <IOKit/IOKitLib.h>
 #include <IOKit/IOCFPlugIn.h>
 #include <IOKit/usb/IOUSBLib.h>
+#include <IOKit/hidsystem/IOHIDLib.h>
+#include <IOKit/hidsystem/IOHIDParameter.h>
 
 struct razer_usb_device {
     IOUSBDeviceInterface **iface;
@@ -81,4 +83,16 @@ int razer_usb_set_report(razer_usb_device *dev, uint16_t index, const uint8_t *d
 
 int razer_usb_get_report(razer_usb_device *dev, uint16_t index, uint8_t *data, uint16_t len) {
     return control(dev, 0xA1, 0x01, index, data, len);
+}
+
+int razer_set_caps_lock(int on) {
+    io_service_t s = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching(kIOHIDSystemClass));
+    if (!s) return -1;
+    io_connect_t c = 0;
+    kern_return_t kr = IOServiceOpen(s, mach_task_self(), kIOHIDParamConnectType, &c);
+    IOObjectRelease(s);
+    if (kr != KERN_SUCCESS) return kr;
+    kr = IOHIDSetModifierLockState(c, kIOHIDCapsLockState, on ? true : false);
+    IOServiceClose(c);
+    return kr;
 }

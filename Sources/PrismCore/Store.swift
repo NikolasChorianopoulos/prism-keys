@@ -23,6 +23,8 @@ public final class Store {
         public var numLockEmulation: Bool = true
         /// Current emulated Num Lock state (true = numbers).
         public var numLock: Bool = true
+        /// Keep Caps Lock in sync between the Razer and the Mac's own keyboard.
+        public var shareCapsLock: Bool = true
         public init() {}
         public init(from decoder: Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -32,6 +34,7 @@ public final class Store {
             maxBrightness = try c.decodeIfPresent(Int.self, forKey: .maxBrightness) ?? 100
             numLockEmulation = try c.decodeIfPresent(Bool.self, forKey: .numLockEmulation) ?? true
             numLock = try c.decodeIfPresent(Bool.self, forKey: .numLock) ?? true
+            shareCapsLock = try c.decodeIfPresent(Bool.self, forKey: .shareCapsLock) ?? true
         }
     }
 

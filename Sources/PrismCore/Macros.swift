@@ -103,6 +103,8 @@ public final class KeyTap {
     /// (keycode, isDown, isRepeat) -> swallow the event?
     /// (keycode, isDown, isRepeat, modifier flags) -> swallow the event?
     public var onKey: ((UInt16, Bool, Bool, CGEventFlags) -> Bool)?
+    /// Modifier/lock key changes (e.g. Caps Lock pressed on any keyboard).
+    public var onFlagsChanged: ((UInt16, CGEventFlags) -> Void)?
     fileprivate var tap: CFMachPort?
 
     public init() {}
@@ -113,7 +115,7 @@ public final class KeyTap {
     }
 
     public func start() -> Bool {
-        let mask = (1 << CGEventType.keyDown.rawValue) | (1 << CGEventType.keyUp.rawValue)
+        let mask = (1 << CGEventType.keyDown.rawValue) | (1 << CGEventType.keyUp.rawValue) | (1 << CGEventType.flagsChanged.rawValue)
         let refcon = Unmanaged.passUnretained(self).toOpaque()
         guard let tap = CGEvent.tapCreate(tap: .cgSessionEventTap, place: .headInsertEventTap, options: .defaultTap,
                                           eventsOfInterest: CGEventMask(mask), callback: keyTapCallback, userInfo: refcon) else {
@@ -136,6 +138,10 @@ private func keyTapCallback(proxy: CGEventTapProxy, type: CGEventType, event: CG
     }
     if event.getIntegerValueField(.eventSourceUserData) == MacroRunner.marker { return Unmanaged.passUnretained(event) }
     let vk = UInt16(event.getIntegerValueField(.keyboardEventKeycode))
+    if type == .flagsChanged {
+        me.onFlagsChanged?(vk, event.flags)
+        return Unmanaged.passUnretained(event)
+    }
     let isRepeat = event.getIntegerValueField(.keyboardEventAutorepeat) != 0
     if me.onKey?(vk, type == .keyDown, isRepeat, event.flags) == true { return nil }
     return Unmanaged.passUnretained(event)

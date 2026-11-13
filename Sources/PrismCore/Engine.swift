@@ -1,4 +1,5 @@
 import AppKit
+import CRazerUSB
 import IOKit.hid
 import Foundation
 
@@ -68,6 +69,8 @@ public final class Engine {
     private let lockLights = LockLights()
     private var mainSettings: Store.Settings
     private var lightTicks = 0
+    private var capsState = false
+    private var capsSyncAt = Date.distantPast
 
     public init(profile: Profile, settings: Store.Settings) {
         self.profile = profile
@@ -84,6 +87,8 @@ public final class Engine {
         queue.async { self.reconnect() }
 
         tap.onKey = { [weak self] vk, down, rep, flags in self?.handleKey(vk, down: down, isRepeat: rep, flags: flags) ?? false }
+        tap.onFlagsChanged = { [weak self] vk, _ in if vk == 0x39 { self?.capsLockPressed() } }
+        capsState = CGEventSource.flagsState(.combinedSessionState).contains(.maskAlphaShift)
         special.onKey = { [weak self] key, pressed in self?.handleSpecial(key, pressed) }
         startTapIfTrusted()
         rebuildSlots()
@@ -542,8 +547,34 @@ public final class Engine {
         lightTicks += 1
         let refresh = force || lightTicks % 13 == 0
         let caps = CGEventSource.flagsState(.combinedSessionState).contains(.maskAlphaShift)
+        reconcileCapsLock(caps)
         lockLights.set(LockLights.caps, caps, force: refresh)
         lockLights.set(LockLights.num, mainSettings.numLockEmulation ? mainSettings.numLock : false, force: refresh)
         lockLights.set(LockLights.scroll, false, force: refresh)
+    }
+
+    // MARK: shared Caps Lock (main thread)
+    // macOS keeps a separate Caps Lock per keyboard and shows caps if *any* is on, so pressing
+    // Caps Lock on the other keyboard can appear to do nothing. Each press flips one shared
+    // state, which is then applied to every keyboard.
+
+    private func capsLockPressed() {
+        guard mainSettings.shareCapsLock else { return }
+        // Our own sync can echo back as a Caps Lock event: ignore those.
+        guard Date().timeIntervalSince(capsSyncAt) > 0.3 else { return }
+        capsState.toggle()
+        capsSyncAt = Date()
+        let want = capsState
+        // Let the keyboard finish its own toggle first, then make all keyboards agree.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            _ = razer_set_caps_lock(want ? 1 : 0)
+            self.updateLockLights(force: true)
+        }
+    }
+
+    /// Adopt Caps Lock changes made some other way (e.g. another app), once things settle.
+    private func reconcileCapsLock(_ actual: Bool) {
+        guard mainSettings.shareCapsLock, actual != capsState, Date().timeIntervalSince(capsSyncAt) > 1 else { return }
+        capsState = actual
     }
 }

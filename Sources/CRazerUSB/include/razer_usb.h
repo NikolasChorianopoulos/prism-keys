@@ -17,4 +17,6 @@ int razer_usb_get_report(razer_usb_device *dev, uint16_t interface_index, uint8_
 
 /// Returns the number of currently attached devices matching vendor/product.
 int razer_usb_count(uint16_t vendor_id, uint16_t product_id);
+/// Sets the system-wide Caps Lock state (applies to every keyboard). Returns 0 on success.
+int razer_set_caps_lock(int on);
 #endif
