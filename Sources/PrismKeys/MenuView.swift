@@ -123,6 +123,9 @@ struct MenuView: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
+        // Fixed height (the tallest set of options), so the menu keeps one size when you switch
+        // effects: menu bar windows don't cope well with resizing.
+        .frame(maxWidth: .infinity, minHeight: 72, maxHeight: 72, alignment: .topLeading)
     }
 
     private var toggles: some View {
