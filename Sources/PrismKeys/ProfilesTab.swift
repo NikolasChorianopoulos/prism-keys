@@ -15,17 +15,37 @@ struct ProfilesTab: View {
             Text("Profiles hold lighting, key colors, remaps, macros and alert settings. Export them to move your setup to another Mac.")
                 .font(.callout).foregroundStyle(.secondary)
             HStack(alignment: .top, spacing: 16) {
+                VStack(alignment: .leading, spacing: 6) {
                 List(model.profileNames, id: \.self, selection: $selected) { name in
                     HStack {
                         Image(systemName: name == model.settings.activeProfile ? "checkmark.circle.fill" : "circle")
                             .foregroundStyle(name == model.settings.activeProfile ? Color.accentColor : .secondary)
                         Text(name)
+                        if name == model.settings.activeProfile {
+                            Text("active").font(.caption).foregroundStyle(.secondary)
+                        }
                         Spacer()
                     }
-                    .contentShape(Rectangle())
-                    .onTapGesture(count: 2) { model.switchProfile(name) }
+                    .tag(name)
+                }
+                // The list's own click handling: single click selects, double-click (primary
+                // action) makes the profile active, right-click shows the menu.
+                .contextMenu(forSelectionType: String.self) { names in
+                    if let name = names.first {
+                        Button("Use Profile") { model.switchProfile(name) }
+                            .disabled(name == model.settings.activeProfile)
+                        Button("Rename…") { renaming = name; renameText = name }
+                        Button("Export…") { model.exportProfiles([name]) }
+                        Divider()
+                        Button("Delete", role: .destructive) { model.deleteProfile(name); if selected == name { selected = nil } }
+                            .disabled(name == model.settings.activeProfile)
+                    }
+                } primaryAction: { names in
+                    if let name = names.first { model.switchProfile(name) }
                 }
                 .frame(width: 260, height: 360)
+                Text("Double-click a profile to use it. Right-click for more.").font(.caption).foregroundStyle(.secondary)
+                }
 
                 VStack(alignment: .leading, spacing: 8) {
                     Button { model.switchProfile(selected ?? "") } label: { Label("Use profile", systemImage: "checkmark") }
@@ -46,6 +66,7 @@ struct ProfilesTab: View {
                 Spacer()
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .onAppear { model.refreshProfiles() }
         .sheet(isPresented: $showNew) {
             NameSheet(title: duplicate ? "Duplicate profile" : "New profile", name: $newName) {
