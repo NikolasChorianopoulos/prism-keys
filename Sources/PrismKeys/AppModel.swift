@@ -363,6 +363,23 @@ extension AppModel {
                 out.append("\(name) alerts use the same color as your custom color on \(names)\(clashing.count > 4 ? " and \(clashing.count - 4) more" : ""), so you may not notice them there.")
             }
         }
+        // Reminders that stay lit after an alert
+        for (name, style) in alerts where style.persist {
+            let color = style.reminderColor ?? style.color
+            let keys = ((try? KeyLayout.resolve(style.persistKeys)) ?? []).map(\.name)
+            guard !keys.isEmpty else { continue }
+            let label = keys.prefix(4).map { VisualLayout.label($0) }.joined(separator: ", ")
+            if profile.effect.type == .static, let c = profile.effect.color, c.looksLike(color),
+               keys.contains(where: { profile.keyColors[$0] == nil }) {
+                out.append("The \(name.lowercased()) reminder on \(label) uses \(c == color ? "the same color as" : "almost the same color as") your Static color, so you may not see it.")
+                continue
+            }
+            let clashing = keys.filter { profile.keyColors[$0]?.looksLike(color) == true }
+            if !clashing.isEmpty {
+                let names = clashing.prefix(4).map { VisualLayout.label($0) }.joined(separator: ", ")
+                out.append("The \(name.lowercased()) reminder uses the same color as your custom color on \(names), so you may not see it.")
+            }
+        }
         return out
     }
 }

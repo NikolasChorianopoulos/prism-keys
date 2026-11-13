@@ -23,9 +23,9 @@ A menu bar app that brings lighting, macros, key remapping and notification aler
 
 **Alerts**
 - A light sweep across the F-keys for notifications, and a pulse over the whole keyboard for incoming calls (FaceTime/iPhone, or any app whose notification says "incoming call").
-- A reminder can stay lit until you press a key. A call alert stops when the call banner goes away.
+- A reminder, in a color you choose, can stay lit until you press a key. A call alert stops when the call banner goes away.
 - While an alert plays, the rest of the keyboard dims so it stands out. How much is adjustable, from not at all to fully off.
-- A warning appears if an alert color is the same as your lighting color.
+- A warning appears if an alert or reminder color is the same as your lighting color.
 
 **Also**
 - Export profiles and import them on another Mac.

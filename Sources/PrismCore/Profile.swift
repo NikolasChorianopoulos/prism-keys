@@ -82,6 +82,8 @@ public struct AlertStyle: Codable, Equatable {
     /// After the animation, keep a small indicator lit until you press a key
     public var persist: Bool
     public var persistKeys: String
+    /// Color of the reminder (nil = same as the alert color)
+    public var reminderColor: RGB? = nil
 }
 
 public struct AlertSettings: Codable, Equatable {

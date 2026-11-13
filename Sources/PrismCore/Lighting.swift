@@ -215,7 +215,7 @@ public final class Animator {
             let age = now.timeIntervalSince(a.start)
             if age > a.style.duration {
                 if a.style.persist, let keys = try? KeyLayout.resolve(a.style.persistKeys) {
-                    indicator = (keys, a.style.color)
+                    indicator = (keys, a.style.reminderColor ?? a.style.color)
                 }
                 alert = nil
             } else {

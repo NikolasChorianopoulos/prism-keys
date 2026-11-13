@@ -101,6 +101,10 @@ struct AlertStyleEditor: View {
                 HStack {
                     Toggle("Afterwards, keep a reminder glowing on", isOn: $style.persist)
                     TextField("logo", text: $style.persistKeys).textFieldStyle(.roundedBorder).frame(width: 120).disabled(!style.persist)
+                    ColorPicker("", selection: Binding(get: { (style.reminderColor ?? style.color).color },
+                                                       set: { style.reminderColor = RGB($0) }), supportsOpacity: false)
+                        .labelsHidden().disabled(!style.persist)
+                        .help("Reminder color")
                     Text("until you press a key").foregroundStyle(.secondary)
                 }
             }
