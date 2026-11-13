@@ -69,6 +69,7 @@ public final class Engine {
     private let lockLights = LockLights()
     private var mainSettings: Store.Settings
     private var lightTicks = 0
+    private var razerSenders = Set<UInt64>()
     private var capsState = false
     private var capsSyncAt = Date.distantPast
 
@@ -88,6 +89,9 @@ public final class Engine {
 
         tap.onKey = { [weak self] vk, down, rep, flags in self?.handleKey(vk, down: down, isRepeat: rep, flags: flags) ?? false }
         tap.onFlagsChanged = { [weak self] vk, _ in if vk == 0x39 { self?.capsLockPressed() } }
+        tap.onRawKey = { [weak self] e, down in self?.rewriteNavigation(e, down: down) ?? false }
+        razerSenders = RazerKeyboard.senderIDs()
+        log("razer key sources: \(razerSenders.map { String(format: "0x%llx", $0) }.sorted())")
         capsState = CGEventSource.flagsState(.combinedSessionState).contains(.maskAlphaShift)
         special.onKey = { [weak self] key, pressed in self?.handleSpecial(key, pressed) }
         startTapIfTrusted()
@@ -270,7 +274,10 @@ public final class Engine {
         let fw = try? k.firmwareVersion()
         log("connected: \(k.model.name) \(fw ?? "")")
         status.connected = true; status.model = k.model.name; status.firmware = fw
-        DispatchQueue.main.async { self.lockLights.reload(); self.updateLockLights(force: true) }
+        DispatchQueue.main.async {
+            self.razerSenders = RazerKeyboard.senderIDs()
+            self.lockLights.reload(); self.updateLockLights(force: true)
+        }
         try? k.setDeviceMode(driverActive ? 0x03 : 0x00)
         if driverActive { try? k.setLED(RazerKeyboard.gameLED, on: gameMode) }
         appliedRemapKey = ""
@@ -576,5 +583,65 @@ public final class Engine {
     private func reconcileCapsLock(_ actual: Bool) {
         guard mainSettings.shareCapsLock, actual != capsState, Date().timeIntervalSince(capsSyncAt) > 1 else { return }
         capsState = actual
+    }
+
+    // MARK: Windows-style navigation keys on the Razer (main thread)
+
+    private static let senderField = CGEventField(rawValue: 87)!   // registry ID of the sending keyboard
+
+    private var navRewrites: [UInt16: (UInt16, CGEventFlags)] = [:]   // decided at key down
+
+    /// In text fields: Home/End → start/end of line (Ctrl: of document); Page Up/Down → move the
+    /// cursor. Elsewhere (web pages, documents) the keys pass through and scroll, like on Windows.
+    /// Only for the Razer: the MacBook's fn+arrows produce the same keys and keep Mac behavior.
+    private func rewriteNavigation(_ e: CGEvent, down: Bool) -> Bool {
+        let vk = UInt16(e.getIntegerValueField(.keyboardEventKeycode))
+        guard [0x73, 0x77, 0x74, 0x79].contains(vk) else { return false }
+        let mapping: (UInt16, CGEventFlags)
+        if down {
+            guard mainSettings.windowsNavigation,
+                  razerSenders.contains(UInt64(bitPattern: e.getIntegerValueField(Self.senderField))),
+                  e.getIntegerValueField(.keyboardEventAutorepeat) != 0 ? navRewrites[vk] != nil : Self.textFieldHasFocus()
+            else { navRewrites[vk] = nil; return false }
+            let flags = e.flags
+            let ctrl = flags.contains(.maskControl)
+            var out: CGEventFlags = [.maskSecondaryFn, .maskNumericPad]
+            if flags.contains(.maskShift) { out.insert(.maskShift) }
+            let newVK: UInt16
+            switch vk {
+            case 0x73: newVK = ctrl ? 0x7E : 0x7B; out.insert(.maskCommand)   // Home → ⌘← (Ctrl: ⌘↑)
+            case 0x77: newVK = ctrl ? 0x7D : 0x7C; out.insert(.maskCommand)   // End  → ⌘→ (Ctrl: ⌘↓)
+            case 0x74: newVK = 0x74; out.insert(.maskAlternate)               // Page Up   → ⌥Page Up (moves the cursor)
+            default:   newVK = 0x79; out.insert(.maskAlternate)               // Page Down → ⌥Page Down
+            }
+            mapping = (newVK, out)
+            navRewrites[vk] = mapping
+        } else {
+            guard let m = navRewrites.removeValue(forKey: vk) else { return false }
+            mapping = m
+        }
+        guard let ne = CGEvent(keyboardEventSource: nil, virtualKey: mapping.0, keyDown: down) else { return false }
+        ne.flags = mapping.1
+        ne.setIntegerValueField(.keyboardEventAutorepeat, value: e.getIntegerValueField(.keyboardEventAutorepeat))
+        ne.setIntegerValueField(.eventSourceUserData, value: MacroRunner.marker)
+        ne.post(tap: .cgSessionEventTap)
+        return true
+    }
+
+    /// True if the focused UI element is something you type into.
+    static func textFieldHasFocus() -> Bool {
+        let sys = AXUIElementCreateSystemWide()
+        AXUIElementSetMessagingTimeout(sys, 0.15)
+        var focused: AnyObject?
+        guard AXUIElementCopyAttributeValue(sys, kAXFocusedUIElementAttribute as CFString, &focused) == .success,
+              let f = focused, CFGetTypeID(f) == AXUIElementGetTypeID() else { return false }
+        let el = f as! AXUIElement
+        AXUIElementSetMessagingTimeout(el, 0.15)
+        var role: AnyObject?
+        AXUIElementCopyAttributeValue(el, kAXRoleAttribute as CFString, &role)
+        if let r = role as? String, ["AXTextArea", "AXTextField", "AXComboBox"].contains(r) { return true }
+        // Editable web content (contenteditable) reports an editable ancestor.
+        var editable: AnyObject?
+        return AXUIElementCopyAttributeValue(el, "AXEditableAncestor" as CFString, &editable) == .success && editable != nil
     }
 }

@@ -25,6 +25,8 @@ public final class Store {
         public var numLock: Bool = true
         /// Keep Caps Lock in sync between the Razer and the Mac's own keyboard.
         public var shareCapsLock: Bool = true
+        /// Home/End/Page Up/Page Down on the Razer behave like Windows (move the cursor).
+        public var windowsNavigation: Bool = true
         public init() {}
         public init(from decoder: Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -35,6 +37,7 @@ public final class Store {
             numLockEmulation = try c.decodeIfPresent(Bool.self, forKey: .numLockEmulation) ?? true
             numLock = try c.decodeIfPresent(Bool.self, forKey: .numLock) ?? true
             shareCapsLock = try c.decodeIfPresent(Bool.self, forKey: .shareCapsLock) ?? true
+            windowsNavigation = try c.decodeIfPresent(Bool.self, forKey: .windowsNavigation) ?? true
         }
     }
 

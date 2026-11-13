@@ -187,3 +187,29 @@ public struct Frame {
         set { if r >= 0, r < rows, c >= 0, c < cols { pixels[r * cols + c] = newValue } }
     }
 }
+
+import IOKit
+
+public extension RazerKeyboard {
+    /// Registry IDs of the keyboard's HID event services. Key events carry this ID
+    /// (CGEvent field 87), which tells Razer key presses apart from the Mac's own keyboard.
+    static func senderIDs() -> Set<UInt64> {
+        var ids = Set<UInt64>()
+        for m in supported {
+            let match = IOServiceMatching("IOHIDEventService") as NSMutableDictionary
+            match["VendorID"] = Int(vendorID)
+            match["ProductID"] = Int(m.productID)
+            var it: io_iterator_t = 0
+            guard IOServiceGetMatchingServices(kIOMainPortDefault, match, &it) == KERN_SUCCESS else { continue }
+            var s = IOIteratorNext(it)
+            while s != 0 {
+                var id: UInt64 = 0
+                if IORegistryEntryGetRegistryEntryID(s, &id) == KERN_SUCCESS { ids.insert(id) }
+                IOObjectRelease(s)
+                s = IOIteratorNext(it)
+            }
+            IOObjectRelease(it)
+        }
+        return ids
+    }
+}

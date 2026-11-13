@@ -70,6 +70,7 @@ struct GeneralTab: View {
                             Text("\(model.settings.maxBrightness)%").monospacedDigit()
                         }
                         Toggle("Share Caps Lock between the Razer and the Mac's keyboard", isOn: $model.settings.shareCapsLock)
+                        Toggle("Windows-style Home, End, Page Up and Page Down on the Razer (move the cursor)", isOn: $model.settings.windowsNavigation)
                         Toggle("Num Lock key switches the numpad between numbers and arrows/navigation (like Windows)", isOn: $model.settings.numLockEmulation)
                         Text("When off, the key works as the Mac's “Clear” key (e.g. in Calculator).")
                             .font(.caption).foregroundStyle(.secondary)

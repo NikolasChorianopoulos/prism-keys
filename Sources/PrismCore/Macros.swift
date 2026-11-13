@@ -103,6 +103,8 @@ public final class KeyTap {
     /// (keycode, isDown, isRepeat) -> swallow the event?
     /// (keycode, isDown, isRepeat, modifier flags) -> swallow the event?
     public var onKey: ((UInt16, Bool, Bool, CGEventFlags) -> Bool)?
+    /// Runs first, with the raw event: return true to swallow it (used to rewrite Razer keys).
+    public var onRawKey: ((CGEvent, Bool) -> Bool)?
     /// Modifier/lock key changes (e.g. Caps Lock pressed on any keyboard).
     public var onFlagsChanged: ((UInt16, CGEventFlags) -> Void)?
     fileprivate var tap: CFMachPort?
@@ -143,6 +145,7 @@ private func keyTapCallback(proxy: CGEventTapProxy, type: CGEventType, event: CG
         return Unmanaged.passUnretained(event)
     }
     let isRepeat = event.getIntegerValueField(.keyboardEventAutorepeat) != 0
+    if me.onRawKey?(event, type == .keyDown) == true { return nil }
     if me.onKey?(vk, type == .keyDown, isRepeat, event.flags) == true { return nil }
     return Unmanaged.passUnretained(event)
 }
