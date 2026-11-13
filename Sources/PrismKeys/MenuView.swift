@@ -12,6 +12,7 @@ struct MenuView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             header
+            UnsupportedKeyboardNote()
             if let r = model.status.recording { RecordingBanner(state: r) }
             if let banner = permissionBanner { banner }
             Divider()
@@ -36,11 +37,7 @@ struct MenuView: View {
                 .resizable().frame(width: 34, height: 34)
             VStack(alignment: .leading, spacing: 2) {
                 Text("Prism Keys").font(.headline)
-                HStack(spacing: 5) {
-                    Circle().fill(model.status.connected ? Color.green : Color.secondary).frame(width: 7, height: 7)
-                    Text(model.status.connected ? "\(shortName(model.status.model)) · \(model.status.firmware ?? "")" : "Keyboard not connected")
-                        .font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                }
+                KeyboardStatusLine(compact: true).font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
             Toggle("", isOn: Binding(get: { model.lightsOn }, set: { model.setLights($0) }))

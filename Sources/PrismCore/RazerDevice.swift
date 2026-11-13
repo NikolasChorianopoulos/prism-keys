@@ -8,6 +8,7 @@ public struct DeviceModel {
     public let cols: Int
     public let transactionID: UInt8
     public let hasMacroKeys: Bool
+    public var hasNumpad: Bool = true
 }
 
 public enum ChromaError: Error, CustomStringConvertible {
@@ -31,7 +32,7 @@ public final class RazerKeyboard {
     public static let vendorID: UInt16 = 0x1532
     public static let supported: [DeviceModel] = [
         DeviceModel(productID: 0x0203, name: "Razer BlackWidow Chroma", rows: 6, cols: 22, transactionID: 0xFF, hasMacroKeys: true),
-        DeviceModel(productID: 0x0209, name: "Razer BlackWidow Chroma Tournament Edition", rows: 6, cols: 22, transactionID: 0xFF, hasMacroKeys: false),
+        DeviceModel(productID: 0x0209, name: "Razer BlackWidow Chroma Tournament Edition", rows: 6, cols: 22, transactionID: 0xFF, hasMacroKeys: false, hasNumpad: false),
         DeviceModel(productID: 0x0211, name: "Razer BlackWidow Chroma (Overwatch)", rows: 6, cols: 22, transactionID: 0xFF, hasMacroKeys: true),
     ]
 
@@ -211,5 +212,35 @@ public extension RazerKeyboard {
             IOObjectRelease(it)
         }
         return ids
+    }
+}
+
+public extension RazerKeyboard {
+    static func model(productID: UInt16) -> DeviceModel? { supported.first { $0.productID == productID } }
+
+    /// Words that identify Razer keyboards by their USB product name (mice, headsets etc. are ignored).
+    private static let keyboardWords = ["blackwidow", "huntsman", "ornata", "cynosa", "deathstalker", "anansi", "keyboard", "keypad", "tartarus", "orbweaver"]
+
+    /// Name of a connected Razer keyboard that Prism Keys doesn't support (nil if there's none).
+    static func unsupportedKeyboardName() -> String? {
+        let match = IOServiceMatching("IOUSBHostDevice") as NSMutableDictionary
+        match["idVendor"] = Int(vendorID)
+        var it: io_iterator_t = 0
+        guard IOServiceGetMatchingServices(kIOMainPortDefault, match, &it) == KERN_SUCCESS else { return nil }
+        defer { IOObjectRelease(it) }
+        var found: String?
+        var s = IOIteratorNext(it)
+        while s != 0 {
+            let pid = (IORegistryEntryCreateCFProperty(s, "idProduct" as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? NSNumber)?.uint16Value
+            let name = (IORegistryEntryCreateCFProperty(s, "USB Product Name" as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? String)
+                ?? (IORegistryEntryCreateCFProperty(s, "kUSBProductString" as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? String)
+            IOObjectRelease(s)
+            if let pid, model(productID: pid) == nil, let name,
+               keyboardWords.contains(where: { name.lowercased().contains($0) }) {
+                found = name
+            }
+            s = IOIteratorNext(it)
+        }
+        return found
     }
 }

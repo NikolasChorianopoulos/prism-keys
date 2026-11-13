@@ -34,7 +34,7 @@ cp -R "$TMPBIN/Sparkle.framework" "$APP/Contents/Frameworks/"
 
 # Info.plist
 sed -e "s|__VERSION__|$VERSION|" -e "s|__BUILD__|$BUILD|" -e "s|__BUNDLE_ID__|$BUNDLE_ID|" \
-    -e "s|__FEED_URL__|$FEED|" -e "s|__PUBLIC_KEY__|$SPARKLE_PUBLIC_KEY|" packaging/Info.plist > "$APP/Contents/Info.plist"
+    -e "s|__FEED_URL__|$FEED|" -e "s|__REPO__|$GITHUB_REPO|" -e "s|__PUBLIC_KEY__|$SPARKLE_PUBLIC_KEY|" packaging/Info.plist > "$APP/Contents/Info.plist"
 printf "APPL????" > "$APP/Contents/PkgInfo"
 
 # Icon

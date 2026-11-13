@@ -4,7 +4,16 @@ A menu bar app that brings lighting, macros, key remapping and notification aler
 
 > Prism Keys is an independent project. It is not affiliated with or endorsed by Razer Inc. Razer, BlackWidow and Chroma are trademarks of Razer Inc.
 
-**Tested on:** BlackWidow Chroma (`1532:0203`, US layout) with macOS 27 on Apple Silicon. The DMG also runs on Intel Macs, and the Tournament Edition and Overwatch variants should work, but none of those have been tested yet. Reports are welcome.
+## Supported keyboards
+
+| Keyboard | Status |
+|---|---|
+| Razer BlackWidow Chroma (`1532:0203`) | Supported and tested (US layout, macOS 27, Apple Silicon) |
+| BlackWidow Chroma Tournament Edition (`1532:0209`), BlackWidow Chroma Overwatch (`1532:0211`) | Should work, untested |
+| Other first-generation Chroma keyboards (BlackWidow Chroma V2, BlackWidow X Chroma, Ornata Chroma) | Same protocol family; not enabled yet |
+| Newer Razer keyboards (BlackWidow V3/V4, Huntsman, Cynosa…) | Not supported yet: they use a newer protocol |
+
+If you plug in a Razer keyboard that isn't supported, Prism Keys says so and offers a link to request support. Reports from owners of the untested models are very welcome. The DMG also runs on Intel Macs, but that hasn't been tested yet.
 
 ## Features
 

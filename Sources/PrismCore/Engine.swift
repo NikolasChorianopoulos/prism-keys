@@ -7,6 +7,10 @@ public struct EngineStatus: Equatable {
     public var connected = false
     public var model: String?
     public var firmware: String?
+    /// USB product ID of the connected supported keyboard (for its on-screen layout).
+    public var productID: UInt16?
+    /// A Razer keyboard is connected but isn't a supported model (its USB name).
+    public var unsupported: String?
     public var keyTap = false
     public var notifications = "not started"
     /// M1–M5 + Fn are being read (keyboard in driver mode).
@@ -267,13 +271,15 @@ public final class Engine {
     private func reconnect() {
         kb = nil
         guard let k = try? RazerKeyboard() else {
-            status.connected = false; status.model = nil; status.firmware = nil
+            status.connected = false; status.model = nil; status.firmware = nil; status.productID = nil
+            status.unsupported = RazerKeyboard.unsupportedKeyboardName()
             return
         }
         kb = k
         let fw = try? k.firmwareVersion()
         log("connected: \(k.model.name) \(fw ?? "")")
         status.connected = true; status.model = k.model.name; status.firmware = fw
+        status.productID = k.model.productID; status.unsupported = nil
         DispatchQueue.main.async {
             self.razerSenders = RazerKeyboard.senderIDs()
             self.lockLights.reload(); self.updateLockLights(force: true)
@@ -289,9 +295,10 @@ public final class Engine {
     private func checkConnection() {
         let present = RazerKeyboard.isConnected()
         if present && kb == nil { usleep(400_000); reconnect() }
+        else if !present { status.unsupported = RazerKeyboard.unsupportedKeyboardName() }
         else if !present && kb != nil {
             log("keyboard unplugged"); kb = nil
-            status.connected = false; status.model = nil; status.firmware = nil
+            status.connected = false; status.model = nil; status.firmware = nil; status.productID = nil
         }
     }
 

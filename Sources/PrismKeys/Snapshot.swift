@@ -1,4 +1,5 @@
 import AppKit
+import PrismCore
 import SwiftUI
 
 /// Developer aid: `PrismKeys --snapshot <dir>` renders the main views to PNGs and quits.
@@ -10,6 +11,13 @@ enum Snapshot {
         let dir = URL(fileURLWithPath: args[i + 1])
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let model = AppModel.shared, updater = UpdaterManager.shared
+        // Simulate keyboards for screenshots: SNAPSHOT_PRODUCT=0x0209, SNAPSHOT_UNSUPPORTED="Razer BlackWidow V3"
+        let env = ProcessInfo.processInfo.environment
+        if let p = env["SNAPSHOT_PRODUCT"], let pid = UInt16(p.replacingOccurrences(of: "0x", with: ""), radix: 16) {
+            model.status.connected = true; model.status.productID = pid
+            model.status.model = RazerKeyboard.model(productID: pid)?.name; model.status.firmware = "v1.0"
+        }
+        if let u = env["SNAPSHOT_UNSUPPORTED"] { model.status.unsupported = u }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             render(MenuView(), "menu", dir, model, updater)
             for tab in ["lighting", "keys", "alerts", "profiles", "general"] {

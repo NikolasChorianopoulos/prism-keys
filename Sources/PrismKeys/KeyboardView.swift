@@ -44,6 +44,26 @@ enum VisualLayout {
     static let width = 23.75
     static let height = 7.2
 
+    /// The layout for a keyboard model: models without M-keys or a numpad leave them out.
+    struct Variant: Equatable {
+        var macroKeys = true
+        var numpad = true
+        init(productID: UInt16?) {
+            if let pid = productID, let m = RazerKeyboard.model(productID: pid) {
+                macroKeys = m.hasMacroKeys; numpad = m.hasNumpad
+            }
+        }
+        var width: Double { VisualLayout.width - (macroKeys ? 0 : 1.25) - (numpad ? 0 : 4.25) }
+        var caps: [Cap] {
+            let shift = macroKeys ? 0 : 1.25
+            return VisualLayout.caps.compactMap { c in
+                if !macroKeys, c.id.hasPrefix("m"), c.id.count == 2, c.id.last!.isNumber { return nil }
+                if !numpad, c.id.hasPrefix("kp") || c.id == "numlock" { return nil }
+                return Cap(id: c.id, x: c.x - shift, y: c.y, w: c.w, h: c.h)
+            }
+        }
+    }
+
     static let labels: [String: String] = [
         "esc": "Esc", "printscreen": "PrtSc", "scrolllock": "ScrLk", "pause": "Pause", "logo": "◆ Razer logo",
         "grave": "`", "minus": "-", "equal": "=", "backspace": "⌫", "insert": "Ins", "home": "Home", "pageup": "PgUp",
@@ -59,6 +79,7 @@ enum VisualLayout {
 }
 
 struct KeyboardView: View {
+    @EnvironmentObject var model: AppModel
     let colorFor: (String) -> Color?
     @Binding var selection: Set<String>
     var badgeFor: ((String) -> String?)? = nil
@@ -66,7 +87,7 @@ struct KeyboardView: View {
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            ForEach(VisualLayout.caps) { cap in
+            ForEach(VisualLayout.Variant(productID: model.status.productID).caps) { cap in
                 let selected = selection.contains(cap.id)
                 let fill = colorFor(cap.id)
                 Button {
@@ -105,7 +126,7 @@ struct KeyboardView: View {
                 .offset(x: cap.x * unit, y: cap.y * unit)
             }
         }
-        .frame(width: VisualLayout.width * unit, height: VisualLayout.height * unit, alignment: .topLeading)
+        .frame(width: VisualLayout.Variant(productID: model.status.productID).width * unit, height: VisualLayout.height * unit, alignment: .topLeading)
         .padding(10)
         .background(RoundedRectangle(cornerRadius: 12).fill(Color(white: 0.07)))
     }

@@ -16,8 +16,9 @@ struct GeneralTab: View {
                     VStack(alignment: .leading, spacing: 3) {
                         Text("Prism Keys").font(.title2.bold())
                         Text("Version \(UpdaterManager.version)").foregroundStyle(.secondary)
-                        Text(model.status.connected ? "\(model.status.model ?? "") · firmware \(model.status.firmware ?? "?")" : "Keyboard not connected")
+                        KeyboardStatusLine()
                             .font(.callout).foregroundStyle(model.status.connected ? Color.green : .secondary)
+                        UnsupportedKeyboardNote()
                     }
                     Spacer()
                 }

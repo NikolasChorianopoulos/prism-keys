@@ -24,6 +24,7 @@
 			<key>CFBundleURLSchemes</key><array><string>prismkeys</string></array>
 		</dict>
 	</array>
+	<key>PrismKeysRepository</key><string>__REPO__</string>
 	<key>SUFeedURL</key><string>__FEED_URL__</string>
 	<key>SUPublicEDKey</key><string>__PUBLIC_KEY__</string>
 	<key>SUEnableAutomaticChecks</key><true/>

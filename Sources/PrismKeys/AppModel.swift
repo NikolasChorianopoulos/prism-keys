@@ -407,3 +407,54 @@ struct AlertClashWarning: View {
         }
     }
 }
+
+// MARK: - Keyboard connection status
+
+enum Project {
+    /// "owner/repo" from the build settings, if set.
+    static var repository: String? {
+        let r = (Bundle.main.infoDictionary?["PrismKeysRepository"] as? String) ?? ""
+        return r.isEmpty || r.hasPrefix("__") ? nil : r
+    }
+    static var supportRequestURL: URL? {
+        repository.flatMap { URL(string: "https://github.com/\($0)/issues/new?title=Support+request") }
+    }
+}
+
+/// One line describing the keyboard: connected / unsupported model / none.
+struct KeyboardStatusLine: View {
+    @EnvironmentObject var model: AppModel
+    var compact = false
+
+    var body: some View {
+        let s = model.status
+        HStack(spacing: 5) {
+            Circle().fill(s.connected ? Color.green : s.unsupported != nil ? Color.orange : Color.secondary)
+                .frame(width: 7, height: 7)
+            if s.connected {
+                Text("\((s.model ?? "").replacingOccurrences(of: compact ? "Razer " : "", with: "")) · \(compact ? "" : "firmware ")\(s.firmware ?? "?")")
+            } else if let name = s.unsupported {
+                Text(compact ? "\(name.replacingOccurrences(of: "Razer ", with: "")) · not supported" : "\(name) isn't supported yet")
+            } else {
+                Text("No supported keyboard connected")
+            }
+        }
+        .lineLimit(1)
+    }
+}
+
+/// Explanation + request link shown when an unsupported Razer keyboard is plugged in.
+struct UnsupportedKeyboardNote: View {
+    @EnvironmentObject var model: AppModel
+    var body: some View {
+        if let name = model.status.unsupported, !model.status.connected {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Prism Keys currently works with the BlackWidow Chroma (and its Tournament and Overwatch editions). \(name) uses a different protocol.")
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                if let url = Project.supportRequestURL {
+                    Link("Request support for this keyboard…", destination: url).font(.caption)
+                }
+            }
+        }
+    }
+}
