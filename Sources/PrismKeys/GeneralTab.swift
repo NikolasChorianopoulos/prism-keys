@@ -69,6 +69,9 @@ struct GeneralTab: View {
                                 .frame(width: 200)
                             Text("\(model.settings.maxBrightness)%").monospacedDigit()
                         }
+                        Toggle("Num Lock key switches the numpad between numbers and arrows/navigation (like Windows)", isOn: $model.settings.numLockEmulation)
+                        Text("When off, the key works as the Mac's “Clear” key (e.g. in Calculator).")
+                            .font(.caption).foregroundStyle(.secondary)
                         Text("If the keyboard flickers on bright colors (especially white), it isn't getting enough power, often because of a USB hub. Lower this, or plug the keyboard straight into the Mac.")
                             .font(.caption).foregroundStyle(.secondary)
                         HStack {

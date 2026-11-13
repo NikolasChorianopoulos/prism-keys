@@ -32,6 +32,7 @@ final class AppModel: ObservableObject {
         if profileNames.isEmpty { try? store.save(p); profileNames = [p.name] }
 
         engine.onStatus = { [weak self] st in self?.status = st }
+        engine.onNumLockPressed = { [weak self] in self?.settings.numLock.toggle() }
         engine.onMacroRecorded = { [weak self] key, macro in
             self?.profile.remaps[key] = nil
             self?.profile.macros[key] = macro

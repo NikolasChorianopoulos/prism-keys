@@ -25,6 +25,8 @@ public final class Engine {
     public var onBrightnessStep: ((Int) -> Void)?
     /// A macro recorded with Fn+F9 was assigned to a key.
     public var onMacroRecorded: ((String, Macro) -> Void)?
+    /// The Num Lock key was pressed (the app flips settings.numLock).
+    public var onNumLockPressed: (() -> Void)?
 
     private var kb: RazerKeyboard?
     private var profile: Profile
@@ -63,12 +65,16 @@ public final class Engine {
     private var recLast: Date?
     private var recTimeout: DispatchWorkItem?
     private var blinkTimer: DispatchSourceTimer?   // queue
+    private let lockLights = LockLights()
+    private var mainSettings: Store.Settings
+    private var lightTicks = 0
 
     public init(profile: Profile, settings: Store.Settings) {
         self.profile = profile
         self.settings = settings
         animator = Animator(profile: profile)
         mainProfile = profile
+        mainSettings = settings
     }
 
     /// Call once from the main thread.
@@ -82,6 +88,8 @@ public final class Engine {
         startTapIfTrusted()
         rebuildSlots()
         syncDriverMode(settings.driverMode)
+        // Lock indicators: follow Caps Lock and the emulated Num Lock (re-asserted every 2 s).
+        Timer.scheduledTimer(withTimeInterval: 0.15, repeats: true) { [weak self] _ in self?.updateLockLights() }
 
         let handler: (NotificationWatcher.Note, String) -> Void = { [weak self] n, source in
             guard let self, self.profile.alerts.watchNotifications else { return }
@@ -228,6 +236,8 @@ public final class Engine {
         animator.setProfile(p)
         DispatchQueue.main.async {
             self.mainProfile = p
+            self.mainSettings = s
+            self.updateLockLights(force: true)
             self.rebuildSlots()
             if s.driverMode != oldSettings.driverMode { self.syncDriverMode(s.driverMode) }
         }
@@ -238,10 +248,11 @@ public final class Engine {
 
     private func applyRemaps(force: Bool) {
         guard let kb else { return }
-        let key = "\(profile.remaps.sorted { $0.key < $1.key })|\(profile.macros.keys.sorted())|\(gameMode)"
+        let numpadNav = settings.numLockEmulation && !settings.numLock
+        let key = "\(profile.remaps.sorted { $0.key < $1.key })|\(profile.macros.keys.sorted())|\(gameMode)|\(numpadNav)"
         if key == appliedRemapKey && !force { return }
         appliedRemapKey = key
-        for w in Remapper.apply(profile, model: kb.model, gameMode: gameMode) { log("remap: \(w)") }
+        for w in Remapper.apply(profile, model: kb.model, gameMode: gameMode, numpadNav: numpadNav) { log("remap: \(w)") }
     }
 
     private func reconnect() {
@@ -254,6 +265,7 @@ public final class Engine {
         let fw = try? k.firmwareVersion()
         log("connected: \(k.model.name) \(fw ?? "")")
         status.connected = true; status.model = k.model.name; status.firmware = fw
+        DispatchQueue.main.async { self.lockLights.reload(); self.updateLockLights(force: true) }
         try? k.setDeviceMode(driverActive ? 0x03 : 0x00)
         if driverActive { try? k.setLED(RazerKeyboard.gameLED, on: gameMode) }
         appliedRemapKey = ""
@@ -383,6 +395,12 @@ public final class Engine {
         }
         if swallowed.contains(vk) {
             if !down { swallowed.remove(vk) }
+            return true
+        }
+        // Num Lock (macOS calls it "Clear", vk 0x47): toggle numbers / navigation.
+        if vk == 0x47, mainSettings.numLockEmulation, down {
+            if !isRepeat { onNumLockPressed?() }
+            swallowed.insert(vk)
             return true
         }
         // Fn+F9 finished: the next key press receives the recorded macro (Esc cancels).
@@ -516,4 +534,16 @@ public final class Engine {
 
     /// Start/stop recording from the app (works without Fn+F9).
     public func toggleRecordingFromApp() { DispatchQueue.main.async { self.toggleRecording() } }
+
+    // MARK: lock indicators (main thread)
+
+    private func updateLockLights(force: Bool = false) {
+        guard mainDriverActive || RazerInputListener.hasPermission else { return }
+        lightTicks += 1
+        let refresh = force || lightTicks % 13 == 0
+        let caps = CGEventSource.flagsState(.combinedSessionState).contains(.maskAlphaShift)
+        lockLights.set(LockLights.caps, caps, force: refresh)
+        lockLights.set(LockLights.num, mainSettings.numLockEmulation ? mainSettings.numLock : false, force: refresh)
+        lockLights.set(LockLights.scroll, false, force: refresh)
+    }
 }

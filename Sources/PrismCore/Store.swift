@@ -18,6 +18,11 @@ public final class Store {
         public var lightsOffWhenDisplaySleeps: Bool = true
         /// Caps the LED brightness (%) to avoid flicker when the keyboard is on an underpowered USB hub.
         public var maxBrightness: Int = 100
+        /// The Num Lock key toggles the numpad between numbers and navigation (Windows style)
+        /// instead of acting as the Mac's "Clear" key.
+        public var numLockEmulation: Bool = true
+        /// Current emulated Num Lock state (true = numbers).
+        public var numLock: Bool = true
         public init() {}
         public init(from decoder: Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -25,6 +30,8 @@ public final class Store {
             driverMode = try c.decodeIfPresent(Bool.self, forKey: .driverMode) ?? false
             lightsOffWhenDisplaySleeps = try c.decodeIfPresent(Bool.self, forKey: .lightsOffWhenDisplaySleeps) ?? true
             maxBrightness = try c.decodeIfPresent(Int.self, forKey: .maxBrightness) ?? 100
+            numLockEmulation = try c.decodeIfPresent(Bool.self, forKey: .numLockEmulation) ?? true
+            numLock = try c.decodeIfPresent(Bool.self, forKey: .numLock) ?? true
         }
     }
 

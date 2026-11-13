@@ -33,7 +33,15 @@ public enum Remapper {
         return out
     }
 
-    public static func mappings(_ p: Profile, includeMacros: Bool = true, gameMode: Bool = false) -> (pairs: [(UInt32, UInt32)], warnings: [String]) {
+    /// Num Lock off: numpad keys become navigation keys (keypad usage → navigation usage).
+    static let numpadNavigation: [(UInt32, UInt32)] = [
+        (0x5F, 0x4A), (0x60, 0x52), (0x61, 0x4B),   // 7 Home, 8 Up, 9 Page Up
+        (0x5C, 0x50), (0x5D, 0x00), (0x5E, 0x4F),   // 4 Left, 5 nothing, 6 Right
+        (0x59, 0x4D), (0x5A, 0x51), (0x5B, 0x4E),   // 1 End, 2 Down, 3 Page Down
+        (0x62, 0x49), (0x63, 0x4C),                 // 0 Insert, . Delete
+    ]
+
+    public static func mappings(_ p: Profile, includeMacros: Bool = true, gameMode: Bool = false, numpadNav: Bool = false) -> (pairs: [(UInt32, UInt32)], warnings: [String]) {
         var pairs: [(UInt32, UInt32)] = []
         var warnings: [String] = []
         let assigned = includeMacros ? slotAssignments(p) : [:]
@@ -50,6 +58,9 @@ public enum Remapper {
             guard let k = KeyLayout.key(name), let src = sourceUsage(k) else { continue }
             pairs.append((src, slot.usage))
         }
+        if numpadNav {
+            for (src, dst) in numpadNavigation where !pairs.contains(where: { $0.0 == src }) { pairs.append((src, dst)) }
+        }
         if gameMode {
             // Gaming mode: the Windows/⌘ key does nothing (overrides any remap of it).
             pairs.removeAll { $0.0 == 0xE3 }
@@ -59,12 +70,13 @@ public enum Remapper {
     }
 
     @discardableResult
-    public static func apply(_ p: Profile, model: DeviceModel, includeMacros: Bool = true, gameMode: Bool = false) -> [String] {
-        let (pairs, warnings) = mappings(p, includeMacros: includeMacros, gameMode: gameMode)
+    public static func apply(_ p: Profile, model: DeviceModel, includeMacros: Bool = true, gameMode: Bool = false, numpadNav: Bool = false) -> [String] {
+        let (pairs, warnings) = mappings(p, includeMacros: includeMacros, gameMode: gameMode, numpadNav: numpadNav)
         let items = pairs.map {
             String(format: "{\"HIDKeyboardModifierMappingSrc\":0x7%08X,\"HIDKeyboardModifierMappingDst\":0x7%08X}", $0.0, $0.1)
         }
-        let set = "{\"UserKeyMapping\":[\(items.joined(separator: ","))]}"
+        // CapsLockDelayOverride 0: Caps Lock reacts to a normal press (macOS adds a delay by default).
+        let set = "{\"CapsLockDelayOverride\":0,\"UserKeyMapping\":[\(items.joined(separator: ","))]}"
         let match = String(format: "{\"VendorID\":0x%04X,\"ProductID\":0x%04X}", RazerKeyboard.vendorID, model.productID)
         let (status, out) = run("/usr/bin/hidutil", ["property", "--matching", match, "--set", set])
         var w = warnings
